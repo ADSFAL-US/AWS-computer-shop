@@ -1,4 +1,4 @@
-# bootstrap.ps1
+﻿# bootstrap.ps1
 # Устанавливает портативный .NET SDK 8.0 без прав администратора
 # Запуск:  powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1
 
@@ -58,9 +58,9 @@ if ($needInstall) {
     Write-Ok "Скачано: $zip"
 
     Write-Host "    Распаковка..."
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::ExtractToDirectory($zip, $InstallDir, $true)
+    Expand-Archive -Path $zip -DestinationPath $InstallDir -Force
     Remove-Item $zip -Force
+
     Write-Ok "Распаковано в $InstallDir"
 
     # ---------- 3. Прописываем переменные среды (User, без админа) ----------
