@@ -56,16 +56,33 @@ if ($LASTEXITCODE -ne 0) {
 
 # Publish as self-contained
 Write-Host ""
-Write-Host "Publishing self-contained executable..."
+Write-Host "Publishing self-contained executable (requires .NET 8 runtime)..."
+
+# Try self-contained first, fall back to portable if fails
 & dotnet publish $projectPath `
     -c $configuration `
     --self-contained `
     --runtime win-x64 `
+    --no-restore `
     -o $buildDir/release
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Publish failed!"
-    exit 1
+    Write-Host "Self-contained publish failed, trying portable build..."
+    if (Test-Path -Path "$buildDir/release") {
+        Remove-Item -Path "$buildDir/release" -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    
+    & dotnet publish $projectPath `
+        -c $configuration `
+        --no-restore `
+        -o $buildDir/release
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Publish failed!"
+        exit 1
+    }
+    
+    Write-Host "Portable build successful (requires .NET 8 runtime on target machine)"
 }
 
 # Move executable to root of build
