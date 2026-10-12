@@ -4,9 +4,26 @@
 
 $ErrorActionPreference = "Stop"
 
+# Determine script root
+$scriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
+if ([string]::IsNullOrEmpty($scriptRoot)) {
+    $scriptRoot = Get-Location
+}
+Set-Location $scriptRoot
+
+Write-Host "Script root: $scriptRoot"
+
 $projectPath = "ElectronCash/src/ElectronCash.Client/ElectronCash.Client.csproj"
+$solutionPath = "ElectronCash/ElectronCash.sln"
 $buildDir = "./build"
 $configuration = "Release"
+
+# Verify project exists
+if (-not (Test-Path -Path $projectPath)) {
+    Write-Host ("Error: Project file not found at " + $projectPath)
+    Write-Host ("Current directory: " + (Get-Location))
+    exit 1
+}
 
 Write-Host "========================================"
 Write-Host "ElectronCash Client Build Script"
@@ -23,15 +40,15 @@ New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 # Clean obj/bin
 Write-Host "Cleaning project artifacts..."
 if (Test-Path -Path "ElectronCash/src/ElectronCash.Client/bin") {
-    Remove-Item -Path "ElectronCash/src/ElectronCash.Client/bin" -Recurse -Force
+    Remove-Item -Path "ElectronCash/src/ElectronCash.Client/bin" -Recurse -Force -ErrorAction SilentlyContinue
 }
 if (Test-Path -Path "ElectronCash/src/ElectronCash.Client/obj") {
-    Remove-Item -Path "ElectronCash/src/ElectronCash.Client/obj" -Recurse -Force
+    Remove-Item -Path "ElectronCash/src/ElectronCash.Client/obj" -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 # Build solution
 Write-Host "Building solution..."
-& dotnet build ElectronCash.sln -c $configuration
+& dotnet build $solutionPath -c $configuration
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed!"
     exit 1
