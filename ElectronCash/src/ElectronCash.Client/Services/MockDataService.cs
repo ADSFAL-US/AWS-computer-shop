@@ -813,7 +813,7 @@ public class MockDataService
     {
         if (order.Id == 0)
         {
-            order.Id = (_orders.Max(o => o.Id) ?? 0) + 1;
+            order.Id = (_orders.Any() ? _orders.Max(o => o.Id) + 1 : 1001);
         }
         
         var existing = _orders.FirstOrDefault(o => o.Id == order.Id);
