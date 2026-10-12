@@ -8,20 +8,20 @@ $projectPath = "ElectronCash/src/ElectronCash.Client/ElectronCash.Client.csproj"
 $buildDir = "./build"
 $configuration = "Release"
 
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "ElectronCash Client Build Script" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "========================================" 
+Write-Host "ElectronCash Client Build Script" 
+Write-Host "========================================" 
 Write-Host ""
 
 # Clean build directory
-Write-Host "Cleaning build directory..." -ForegroundColor Yellow
+Write-Host "Cleaning build directory..." 
 if (Test-Path $buildDir) {
     Remove-Item $buildDir -Recurse -Force
 }
 New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 
 # Clean obj/bin
-Write-Host "Cleaning project artifacts..." -ForegroundColor Yellow
+Write-Host "Cleaning project artifacts..." 
 if (Test-Path "ElectronCash/src/ElectronCash.Client/bin") {
     Remove-Item "ElectronCash/src/ElectronCash.Client/bin" -Recurse -Force
 }
@@ -30,16 +30,16 @@ if (Test-Path "ElectronCash/src/ElectronCash.Client/obj") {
 }
 
 # Build solution
-Write-Host "Building solution..." -ForegroundColor Yellow
+Write-Host "Building solution..." 
 & dotnet build ElectronCash.sln -c $configuration
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Build failed!" -ForegroundColor Red
+    Write-Host "Build failed!" 
     exit 1
 }
 
 # Publish as self-contained
-Write-Host "" -ForegroundColor Green
-Write-Host "Publishing self-contained executable..." -ForegroundColor Yellow
+Write-Host "" 
+Write-Host "Publishing self-contained executable..." 
 & dotnet publish $projectPath `
     -c $configuration `
     --self-contained `
@@ -47,7 +47,7 @@ Write-Host "Publishing self-contained executable..." -ForegroundColor Yellow
     -o $buildDir/release
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Publish failed!" -ForegroundColor Red
+    Write-Host "Publish failed!" 
     exit 1
 }
 
@@ -55,12 +55,12 @@ if ($LASTEXITCODE -ne 0) {
 $exePath = "$buildDir/release/ElectronCash.Client.exe"
 if (Test-Path $exePath) {
     Copy-Item $exePath $buildDir/
-    Write-Host "" -ForegroundColor Green
-    Write-Host "✓ Build complete!" -ForegroundColor Green
-    Write-Host "  Executable: $buildDir/ElectronCash.Client.exe" -ForegroundColor Cyan
-    Write-Host "  Full build: $buildDir/release/" -ForegroundColor Cyan
-    Write-Host "" -ForegroundColor Green
+    Write-Host "" 
+    Write-Host "✓ Build complete!" 
+    Write-Host "  Executable: $buildDir/ElectronCash.Client.exe" 
+    Write-Host "  Full build: $buildDir/release/" 
+    Write-Host "" 
 } else {
-    Write-Host "Error: Executable not found at $exePath" -ForegroundColor Red
+    Write-Host "Error: Executable not found at $exePath" 
     exit 1
 }
