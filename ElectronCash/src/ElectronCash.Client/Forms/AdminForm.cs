@@ -12,16 +12,16 @@ namespace ElectronCash.Client.Forms;
 /// </summary>
 public class AdminForm : ModernForm
 {
-    private readonly TabControl _tabControl;
-    private readonly DataGridView _usersGrid;
-    private readonly DataGridView _auditGrid;
-    private readonly DataGridView _ipGrid;
-    private readonly FlatButton _btnAddUser;
-    private readonly FlatButton _btnEditUser;
-    private readonly FlatButton _btnDeleteUser;
-    private readonly FlatButton _btnAddIp;
-    private readonly FlatButton _btnRemoveIp;
-    private readonly FlatButton _btnClose;
+    private TabControl _tabControl;
+        private DataGridView _usersGrid;
+        private DataGridView _auditGrid;
+        private DataGridView _ipGrid;
+        private FlatButton _btnAddUser;
+        private FlatButton _btnEditUser;
+        private FlatButton _btnDeleteUser;
+        private FlatButton _btnAddIp;
+        private FlatButton _btnRemoveIp;
+        private FlatButton _btnClose;
 
     public AdminForm()
     {

@@ -21,8 +21,8 @@ public class CartRow : Control
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | 
                  ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         DoubleBuffered = true;
-        Height = 80;
-        MinimumSize = new Size(400, 80);
+            Height = 100;
+            MinimumSize = new Size(388, 100); // Match new cart sidebar width
         Font = Theme.RegularFont;
     }
 
@@ -68,7 +68,7 @@ public class CartRow : Control
 
         if (_item == null) return;
 
-        // Название товара
+            // Название товара (верхний левый)
         var nameRect = new Rectangle(rect.X + 16, rect.Y + 8, rect.Width - 200, 24);
         using (var brush = new SolidBrush(Theme.TextPrimary))
         {
@@ -76,7 +76,7 @@ public class CartRow : Control
             g.DrawString(_item.ProductName, Theme.RegularFont, brush, nameRect, sf);
         }
 
-        // Цена за единицу
+            // Цена за единицу (под названием)
         var priceRect = new Rectangle(rect.X + 16, rect.Y + 36, 100, 20);
         using (var brush = new SolidBrush(Theme.TextSecondary))
         {
@@ -84,34 +84,37 @@ public class CartRow : Control
             g.DrawString($"{_item.UnitPrice:N0} ₽ × {_item.Quantity}", Theme.SmallFont, brush, priceRect, sf);
         }
 
-        // Кнопка уменьшения количества
-        var minusRect = new Rectangle(rect.X + rect.Width - 180, rect.Y + 20, 36, 36);
-        DrawQtyButton(g, minusRect, "\uE70D", _qtyMinusPressed, _hover); // minus
+            // Кнопки количества (правый центр)
+            int buttonY = rect.Y + (rect.Height - 36) / 2; // Vertically centered
+        
+            // Кнопка уменьшения количества
+            var minusRect = new Rectangle(rect.X + rect.Width - 180, buttonY, 36, 36);
+            DrawQtyButton(g, minusRect, "\uE70D", _qtyMinusPressed, _hover); // minus
 
-        // Количество
-        var qtyRect = new Rectangle(rect.X + rect.Width - 140, rect.Y + 20, 40, 36);
-        using (var brush = new SolidBrush(Theme.TextPrimary))
-        {
-            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(_item.Quantity.ToString(), Theme.SectionTitleFont, brush, qtyRect, sf);
+            // Количество
+            var qtyRect = new Rectangle(rect.X + rect.Width - 140, buttonY, 40, 36);
+            using (var brush = new SolidBrush(Theme.TextPrimary))
+            {
+                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                g.DrawString(_item.Quantity.ToString(), Theme.SectionTitleFont, brush, qtyRect, sf);
+            }
+
+            // Кнопка увеличения количества
+            var plusRect = new Rectangle(rect.X + rect.Width - 96, buttonY, 36, 36);
+            DrawQtyButton(g, plusRect, "\uE710", _qtyPlusPressed, _hover); // plus
+
+            // Сумма (под кнопками количества)
+            var totalRect = new Rectangle(rect.X + rect.Width - 180, buttonY + 40, 160, 24);
+            using (var brush = new SolidBrush(Theme.Accent))
+            {
+                var sf = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Near };
+                g.DrawString($"{_item.Total:N0} ₽", Theme.SectionTitleFont, brush, totalRect, sf);
+            }
+
+            // Кнопка удаления (справа от кнопок количества, по центру вертикально)
+            var removeRect = new Rectangle(rect.X + rect.Width - 48, buttonY, 36, 36);
+            DrawQtyButton(g, removeRect, "\uE711", _removePressed, _hover, Theme.Danger); // close
         }
-
-        // Кнопка увеличения количества
-        var plusRect = new Rectangle(rect.X + rect.Width - 96, rect.Y + 20, 36, 36);
-        DrawQtyButton(g, plusRect, "\uE710", _qtyPlusPressed, _hover); // plus
-
-        // Сумма
-        var totalRect = new Rectangle(rect.X + rect.Width - 180, rect.Y + 8, 160, 24);
-        using (var brush = new SolidBrush(Theme.Accent))
-        {
-            var sf = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Near };
-            g.DrawString($"{_item.Total:N0} ₽", Theme.SectionTitleFont, brush, totalRect, sf);
-        }
-
-        // Кнопка удаления
-        var removeRect = new Rectangle(rect.X + rect.Width - 48, rect.Y + 20, 36, 36);
-        DrawQtyButton(g, removeRect, "\uE711", _removePressed, _hover, Theme.Danger); // close
-    }
 
     private void DrawQtyButton(Graphics g, Rectangle rect, string icon, bool pressed, bool hover, Color? accentColor = null)
     {
@@ -167,47 +170,49 @@ public class CartRow : Control
         base.OnMouseDown(e);
         if (e.Button == MouseButtons.Left)
         {
-            var minusRect = new Rectangle(Width - 180, 20, 36, 36);
-            var plusRect = new Rectangle(Width - 96, 20, 36, 36);
-            var removeRect = new Rectangle(Width - 48, 20, 36, 36);
+                int buttonY = (Height - 36) / 2;
+                var minusRect = new Rectangle(Width - 180, buttonY, 36, 36);
+                var plusRect = new Rectangle(Width - 96, buttonY, 36, 36);
+                var removeRect = new Rectangle(Width - 48, buttonY, 36, 36);
 
-            if (minusRect.Contains(e.Location))
-                _qtyMinusPressed = true;
-            else if (plusRect.Contains(e.Location))
-                _qtyPlusPressed = true;
-            else if (removeRect.Contains(e.Location))
-                _removePressed = true;
+                if (minusRect.Contains(e.Location))
+                    _qtyMinusPressed = true;
+                else if (plusRect.Contains(e.Location))
+                    _qtyPlusPressed = true;
+                else if (removeRect.Contains(e.Location))
+                    _removePressed = true;
 
-            Invalidate();
+                Invalidate();
+            }
         }
-    }
 
-    protected override void OnMouseUp(MouseEventArgs e)
-    {
-        base.OnMouseUp(e);
-        if (e.Button == MouseButtons.Left)
+        protected override void OnMouseUp(MouseEventArgs e)
         {
-            var minusRect = new Rectangle(Width - 180, 20, 36, 36);
-            var plusRect = new Rectangle(Width - 96, 20, 36, 36);
-            var removeRect = new Rectangle(Width - 48, 20, 36, 36);
+            base.OnMouseUp(e);
+            if (e.Button == MouseButtons.Left)
+            {
+                int buttonY = (Height - 36) / 2;
+                var minusRect = new Rectangle(Width - 180, buttonY, 36, 36);
+                var plusRect = new Rectangle(Width - 96, buttonY, 36, 36);
+                var removeRect = new Rectangle(Width - 48, buttonY, 36, 36);
 
-            if (_qtyMinusPressed && minusRect.Contains(e.Location) && _item != null)
-            {
-                QuantityChanged?.Invoke(this, Math.Max(1, _item.Quantity - 1));
-            }
-            else if (_qtyPlusPressed && plusRect.Contains(e.Location) && _item != null)
-            {
-                QuantityChanged?.Invoke(this, _item.Quantity + 1);
-            }
-            else if (_removePressed && removeRect.Contains(e.Location))
-            {
-                RemoveClicked?.Invoke(this, EventArgs.Empty);
-            }
+                if (_qtyMinusPressed && minusRect.Contains(e.Location) && _item != null)
+                {
+                    QuantityChanged?.Invoke(this, Math.Max(1, _item.Quantity - 1));
+                }
+                else if (_qtyPlusPressed && plusRect.Contains(e.Location) && _item != null)
+                {
+                    QuantityChanged?.Invoke(this, _item.Quantity + 1);
+                }
+                else if (_removePressed && removeRect.Contains(e.Location))
+                {
+                    RemoveClicked?.Invoke(this, EventArgs.Empty);
+                }
 
-            _qtyMinusPressed = _qtyPlusPressed = _removePressed = false;
-            Invalidate();
+                _qtyMinusPressed = _qtyPlusPressed = _removePressed = false;
+                Invalidate();
+            }
         }
-    }
 
     public void ApplyTheme()
     {

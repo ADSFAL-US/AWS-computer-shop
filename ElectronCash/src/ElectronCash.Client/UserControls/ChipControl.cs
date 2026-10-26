@@ -79,16 +79,16 @@ public class ChipControl : Control
         {
             if (g == null) return;
             
-            int textWidth = string.IsNullOrEmpty(_text) ? 0 : (int)g.MeasureString(_text, Font).Width;
+                int textWidth = string.IsNullOrEmpty(_text) ? 0 : (int)Math.Ceiling(g.MeasureString(_text, Font).Width);
             int iconWidth = string.IsNullOrEmpty(_icon) ? 0 : 20;
             int removeWidth = _removable ? 24 : 0;
-            int padding = 24;
-            int gap = string.IsNullOrEmpty(_icon) || string.IsNullOrEmpty(_text) ? 0 : 6;
+                int padding = 24; // 12 left + 12 right
+                int gap = (string.IsNullOrEmpty(_icon) || string.IsNullOrEmpty(_text)) ? 0 : 6;
             
             Width = padding + iconWidth + gap + textWidth + removeWidth;
             
             // Minimum width to prevent text clipping
-            if (Width < 60) Width = 60;
+                if (Width < 72) Width = 72;
         }
     }
 

@@ -25,9 +25,9 @@ public class LoginForm : ModernForm
     public LoginForm()
     {
         Text = "Электронная касса";
-            Size = new Size(480, 680);
-            MinimumSize = new Size(480, 680);
-            MaximumSize = new Size(480, 680);
+            Size = new Size(480, 720);
+            MinimumSize = new Size(480, 720);
+            MaximumSize = new Size(480, 720);
             StartPosition = FormStartPosition.CenterScreen;
             Padding = new Padding(0, 40, 0, 0);
 
@@ -47,7 +47,7 @@ public class LoginForm : ModernForm
                 TabIndex = 1
             };
 
-            // Кнопка входа
+            // Кнопка входа - full width, centered
             _loginButton = new FlatButton
             {
                 Text = "Войти",
@@ -55,7 +55,9 @@ public class LoginForm : ModernForm
                 Location = new Point(40, 356),
                 Size = new Size(400, 48),
                 Font = Theme.SectionTitleFont,
-                TabIndex = 2
+                TabIndex = 2,
+                            AutoSize = false,
+                            TextAlign = ContentAlignment.MiddleCenter
             };
             _loginButton.Click += LoginButton_Click;
 
@@ -90,52 +92,56 @@ public class LoginForm : ModernForm
                 Location = new Point(220, 444)
             };
 
-            // Кнопки быстрого входа - better spacing
+            // Кнопки быстрого входа - full width, centered
             _btnCashier = CreateQuickLoginButton("Войти как кассир", "\uE716", 0);
             _btnManager = CreateQuickLoginButton("Войти как менеджер", "\uE710", 56);
             _btnAdmin = CreateQuickLoginButton("Войти как админ", "\uE72C", 112);
-        {
-            Text = "Зарегистрироваться",
-            Font = Theme.RegularFont,
-            LinkColor = Theme.Accent,
-            ActiveLinkColor = Theme.AccentHover,
-            VisitedLinkColor = Theme.Accent,
-            AutoSize = true,
-            Location = new Point(180, 580),
-            TabIndex = 6
-        };
-        _registerLink.LinkClicked += (s, e) => 
-        {
-            Toast.Show(this, "Регистрация недоступна в демо-версии", ToastType.Info);
-        };
 
-        Controls.AddRange(new Control[]
-        {
-            _loginField, _passwordField, _loginButton, _errorLabel,
-            separatorPanel, separatorLabel,
-            _btnCashier, _btnManager, _btnAdmin,
-            _registerLink
-        });
+            _registerLink = new LinkLabel
+            {
+                Text = "Зарегистрироваться",
+                Font = Theme.RegularFont,
+                LinkColor = Theme.Accent,
+                ActiveLinkColor = Theme.AccentHover,
+                VisitedLinkColor = Theme.Accent,
+                AutoSize = true,
+                Location = new Point(180, 620),
+                TabIndex = 6
+            };
+            _registerLink.LinkClicked += (s, e) => 
+            {
+                Toast.Show(this, "Регистрация недоступна в демо-версии", ToastType.Info);
+            };
 
-        // Enter в полях = вход
-        _loginField.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) _passwordField.Focus(); };
-        _passwordField.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) LoginButton_Click(s, e); };
-    }
+            Controls.AddRange(new Control[]
+            {
+                _loginField, _passwordField, _loginButton, _errorLabel,
+                separatorPanel, separatorLabel,
+                _btnCashier, _btnManager, _btnAdmin,
+                _registerLink
+            });
 
-    private FlatButton CreateQuickLoginButton(string text, string icon, int yOffset)
-    {
-        var btn = new FlatButton
+            // Enter в полях = вход
+            _loginField.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) _passwordField.Focus(); };
+            _passwordField.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) LoginButton_Click(s, e); };
+        }
+
+        private FlatButton CreateQuickLoginButton(string text, string icon, int yOffset)
         {
-            Text = text,
-            Icon = icon,
-            Variant = ButtonVariant.Ghost,
-            Location = new Point(40, 456 + yOffset),
-            Size = new Size(400, 44),
-            Font = Theme.RegularFont
-        };
-        btn.Click += QuickLogin_Click;
-        return btn;
-    }
+            var btn = new FlatButton
+            {
+                Text = text,
+                Icon = icon,
+                Variant = ButtonVariant.Ghost,
+                Location = new Point(40, 456 + yOffset),
+                Size = new Size(400, 44),
+                Font = Theme.RegularFont,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+            btn.Click += QuickLogin_Click;
+            return btn;
+        }
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -164,8 +170,8 @@ public class LoginForm : ModernForm
         var titleRect = new Rectangle(40, 156, Width - 80, 32);
         Theme.DrawText(g, "Электронная касса", Theme.FormTitleFont, Theme.TextPrimary, titleRect, StringAlignment.Center);
 
-        // Подзаголовок
-        var subtitleRect = new Rectangle(40, 184, Width - 80, 20);
+        // Подзаголовок - moved lower to avoid overlap with title
+                var subtitleRect = new Rectangle(40, 200, Width - 80, 24);
         Theme.DrawText(g, "Автоматизированное рабочее место кассира", Theme.SmallFont, Theme.TextSecondary, subtitleRect, StringAlignment.Center);
     }
 
