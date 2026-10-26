@@ -14,9 +14,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="**\*.cs" />
+    <Compile Include="*.cs" />
+    <Compile Include="Controls\**\*.cs" />
+    <Compile Include="Forms\**\*.cs" />
+    <Compile Include="Models\**\*.cs" />
+    <Compile Include="Services\**\*.cs" />
     <Compile Include="Theme\**\*.cs" />
     <Compile Include="UserControls\**\*.cs" />
+    <Compile Include="Utils\**\*.cs" />
   </ItemGroup>
 
 </Project>
