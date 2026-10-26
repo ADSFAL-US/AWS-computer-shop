@@ -176,7 +176,7 @@ public class LoginForm : ModernForm
         if (_isLoggingIn) return;
 
         string login = _loginField.Text.Trim();
-        string password = _passwordField.Text;
+        string password = _passwordField.Text ?? string.Empty;
 
         if (string.IsNullOrEmpty(login) || string.IsNullOrEmpty(password))
         {

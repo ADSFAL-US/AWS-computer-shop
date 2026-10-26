@@ -104,7 +104,7 @@ public class CartRow : Control
         using (var brush = new SolidBrush(Theme.Accent))
         {
             var sf = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Near };
-            g.DrawString($"{_item.TotalPrice:N0} ₽", Theme.SectionTitleFont, brush, totalRect, sf);
+            g.DrawString($"{_item.Total:N0} ₽", Theme.SectionTitleFont, brush, totalRect, sf);
         }
 
         // Кнопка удаления

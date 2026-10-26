@@ -1,6 +1,7 @@
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using ElectronCash.Client.Theme;
+using ElectronCash.Client.UserControls;
 
 namespace ElectronCash.Client.Controls;
 

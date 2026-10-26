@@ -211,7 +211,7 @@ public class MainForm : ModernForm
     {
         _categoryChipsPanel.Controls.Clear();
         
-        var categories = new[] { "Все" }.Concat(_allProducts.Select(p => p.Category).Distinct().OrderBy(c => c)).ToArray();
+        var categories = new[] { "Все" }.Concat(_allProducts.Select(p => p.Icon).Distinct().OrderBy(c => c)).ToArray();
         
         foreach (var category in categories)
         {
@@ -253,8 +253,8 @@ public class MainForm : ModernForm
         var searchText = _searchBox.Text.ToLower().Trim();
         
         _filteredProducts = _allProducts.Where(p => 
-            (string.IsNullOrEmpty(searchText) || p.Name.ToLower().Contains(searchText) || p.Category.ToLower().Contains(searchText)) &&
-            (_selectedCategory == "Все" || p.Category == _selectedCategory)
+            (string.IsNullOrEmpty(searchText) || p.Name.ToLower().Contains(searchText) || p.Icon.ToLower().Contains(searchText)) &&
+            (_selectedCategory == "Все" || p.Icon == _selectedCategory)
         ).ToList();
         
         RenderProducts();
@@ -278,14 +278,14 @@ public class MainForm : ModernForm
 
     private void AddToCart(Product product)
     {
-        var existingItem = Session.CurrentCart.Items.FirstOrDefault(i => i.ProductId == product.Id);
+        var existingItem = Session.CurrentCart.FirstOrDefault(i => i.ProductId == product.Id);
         if (existingItem != null)
         {
             existingItem.Quantity++;
         }
         else
         {
-            Session.CurrentCart.Items.Add(new OrderItem
+            Session.CurrentCart.Add(new OrderItem
             {
                 ProductId = product.Id,
                 ProductName = product.Name,
@@ -294,24 +294,24 @@ public class MainForm : ModernForm
             });
         }
         
-        Session.CurrentCart.UpdatedAt = DateTime.Now;
+        Session.CartChanged?.Invoke();
         Toast.Show(this, $"{product.Name} добавлен в корзину", ToastType.Success);
     }
 
-    private void Session_CartChanged(object? sender, EventArgs e)
+    private void Session_CartChanged()
     {
         UpdateCartUI();
     }
 
     private void UpdateCartUI()
     {
-        int itemCount = Session.CurrentCart.Items.Sum(i => i.Quantity);
-        decimal total = Session.CurrentCart.Items.Sum(i => i.TotalPrice);
+        int itemCount = Session.CurrentCart.Sum(i => i.Quantity);
+        decimal total = Session.CurrentCart.Sum(i => i.Total);
         
         _btnCart.Text = $"Корзина ({itemCount})";
         
         _cartItemsPanel.Controls.Clear();
-        foreach (var item in Session.CurrentCart.Items)
+        foreach (var item in Session.CurrentCart)
         {
             var row = new CartRow
             {
@@ -322,12 +322,12 @@ public class MainForm : ModernForm
             row.QuantityChanged += (s, qty) => 
             {
                 item.Quantity = qty;
-                Session.CurrentCart.UpdatedAt = DateTime.Now;
+                Session.CartChanged?.Invoke();
             };
             row.RemoveClicked += (s, e) => 
             {
-                Session.CurrentCart.Items.Remove(item);
-                Session.CurrentCart.UpdatedAt = DateTime.Now;
+                Session.CurrentCart.Remove(item);
+                Session.CartChanged?.Invoke();
             };
             _cartItemsPanel.Controls.Add(row);
         }
@@ -353,7 +353,7 @@ public class MainForm : ModernForm
 
     private void BtnCheckout_Click(object? sender, EventArgs e)
     {
-        if (Session.CurrentCart.Items.Count == 0)
+        if (Session.CurrentCart.Count == 0)
         {
             Toast.Show(this, "Корзина пуста", ToastType.Warning);
             return;
@@ -374,16 +374,16 @@ public class MainForm : ModernForm
                 {
                     var order = new Order
                     {
-                        UserId = Session.CurrentUser?.Id ?? 0,
-                        Items = new List<OrderItem>(Session.CurrentCart.Items),
-                        TotalAmount = Session.CurrentCart.Items.Sum(i => i.TotalPrice),
-                        Status = "Completed",
+                        CashierId = Session.CurrentUser?.Id ?? 0,
+                        Items = new List<OrderItem>(Session.CurrentCart),
+                        Total = Session.CurrentCart.Sum(i => i.Total),
+                        Status = OrderStatus.Paid,
                         CreatedAt = DateTime.Now
                     };
                     
                     MockDataService.Instance.AddOrder(order);
-                    Session.CurrentCart.Items.Clear();
-                    Session.CurrentCart.UpdatedAt = DateTime.Now;
+                    Session.CurrentCart.Clear();
+                    Session.CartChanged?.Invoke();
                     
                     _progressBar.Visible = false;
                     _progressBar.Indeterminate = false;

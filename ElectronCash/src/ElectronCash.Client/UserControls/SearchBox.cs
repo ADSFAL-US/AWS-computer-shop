@@ -47,7 +47,7 @@ public class SearchBox : Control
         set => _textBox.Text = value; 
     }
 
-    public event EventHandler? TextChanged
+    public new event EventHandler? TextChanged
     {
         add => _textBox.TextChanged += value;
         remove => _textBox.TextChanged -= value;

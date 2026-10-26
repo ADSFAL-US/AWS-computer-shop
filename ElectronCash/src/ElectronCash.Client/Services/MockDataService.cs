@@ -697,6 +697,9 @@ public class MockDataService
     /// <summary>Получить все категории товаров.</summary>
     public List<Category> GetCategories() => new List<Category>(_categories);
 
+    /// <summary>Получить все товары без фильтрации.</summary>
+    public List<Product> GetAllProducts() => new List<Product>(_products);
+
     /// <summary>Получить все товары с фильтрацией (поиск по названию, категория, теги, диапазон цен).</summary>
     public List<Product> GetProducts(string? searchText = null, int? categoryId = null, List<string>? tags = null, 
         decimal? minPrice = null, decimal? maxPrice = null, bool onlyInStock = false)
@@ -809,7 +812,7 @@ public class MockDataService
     public List<User> GetAllUsers() => new List<User>(_users);
 
     /// <summary>Добавить заказ (сохранение при оплате).</summary>
-    public void SaveOrder(Order order)
+    public void AddOrder(Order order)
     {
         if (order.Id == 0)
         {

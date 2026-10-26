@@ -21,7 +21,6 @@ public class ProgressBarCustom : Control
         DoubleBuffered = true;
         Height = 8;
         MinimumSize = new Size(100, 8);
-        Font = Theme.RegularFont;
 
         _animationTimer = new System.Windows.Forms.Timer { Interval = 50 };
         _animationTimer.Tick += (s, e) =>

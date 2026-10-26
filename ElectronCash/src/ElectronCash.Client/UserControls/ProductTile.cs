@@ -78,7 +78,7 @@ public class ProductTile : Control
             using (var brush = new SolidBrush(Theme.TextMuted))
             {
                 var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                g.DrawString(GetCategoryIcon(_product.Category), iconFont, brush, imageRect, sf);
+                g.DrawString(_product.Icon, iconFont, brush, imageRect, sf);
             }
         }
 
@@ -88,14 +88,6 @@ public class ProductTile : Control
         {
             var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Near, Trimming = StringTrimming.EllipsisCharacter };
             g.DrawString(_product.Name, Theme.ProductNameFont, brush, nameRect, sf);
-        }
-
-        // Категория
-        var categoryRect = new Rectangle(rect.X + 12, rect.Y + 196, rect.Width - 24, 20);
-        using (var brush = new SolidBrush(Theme.TextSecondary))
-        {
-            var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Near };
-            g.DrawString(_product.Category, Theme.SmallFont, brush, categoryRect, sf);
         }
 
         // Цена и кнопка добавления
@@ -122,22 +114,6 @@ public class ProductTile : Control
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             g.DrawString("+ Корзина", Theme.RegularFont, brush, btnRect, sf);
         }
-    }
-
-    private string GetCategoryIcon(string category)
-    {
-        return category switch
-        {
-            "Процессоры" => "\uE773", // chip
-            "Видеокарты" => "\uE774", // graphics card
-            "Оперативная память" => "\uE775", // memory
-            "Накопители" => "\uE776", // drive
-            "Материнские платы" => "\uE777", // motherboard
-            "Блоки питания" => "\uE778", // power
-            "Корпуса" => "\uE779", // case
-            "Охлаждение" => "\uE77A", // fan
-            _ => "\uE773"
-        };
     }
 
     protected override void OnMouseEnter(EventArgs e)
