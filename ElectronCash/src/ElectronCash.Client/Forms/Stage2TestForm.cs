@@ -1,3 +1,4 @@
+using System.Drawing;
 using ElectronCash.Client.Controls;
 using ElectronCash.Client.Theme;
 
