@@ -175,7 +175,7 @@ public class FlatButton : Control
         // Иконка
         if (!string.IsNullOrEmpty(_icon))
         {
-            using (var iconFont = new Font("Segoe MDL2 Assets", 14))
+            using (var iconFont = new Font(Theme.IconFontFamily, 14))
             using (var brush = new SolidBrush(textColor))
             {
                 var iconRect = new Rectangle(startX, centerY - 10, 20, 20);

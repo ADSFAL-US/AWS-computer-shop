@@ -81,7 +81,7 @@ public class SearchBox : Control
         }
 
         // Иконка поиска слева
-        using (var iconFont = new Font("Segoe MDL2 Assets", 16))
+        using (var iconFont = new Font(Theme.IconFontFamily, 16))
         using (var brush = new SolidBrush(_focused ? Theme.Accent : Theme.TextMuted))
         {
             var iconRect = new Rectangle(10, 4, 32, 32);

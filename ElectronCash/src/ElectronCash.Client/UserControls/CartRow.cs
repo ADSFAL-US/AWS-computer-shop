@@ -139,7 +139,7 @@ public class CartRow : Control
         if (accentColor.HasValue && accentColor.Value == Theme.Danger && (pressed || hover))
             iconColor = Color.White;
 
-        using (var iconFont = new Font("Segoe MDL2 Assets", 14))
+        using (var iconFont = new Font(Theme.IconFontFamily, 14))
         using (var brush = new SolidBrush(iconColor))
         {
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };

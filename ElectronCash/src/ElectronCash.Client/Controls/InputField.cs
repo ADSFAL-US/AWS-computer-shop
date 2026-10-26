@@ -110,7 +110,7 @@ public class InputField : Control
         }
 
         // Иконка слева
-        using (var iconFont = new Font("Segoe MDL2 Assets", 16))
+        using (var iconFont = new Font(Theme.IconFontFamily, 16))
         using (var brush = new SolidBrush(_focused ? Theme.Accent : Theme.TextMuted))
         {
             var iconRect = new Rectangle(12, 8, 32, 32);
@@ -135,7 +135,7 @@ public class InputField : Control
             string eyeIcon = _showPassword ? "\uE890" : "\uE891"; // eye / eye closed
             var eyeRect = new Rectangle(Width - 44, 8, 32, 32);
             
-            using (var iconFont = new Font("Segoe MDL2 Assets", 14))
+            using (var iconFont = new Font(Theme.IconFontFamily, 14))
             using (var brush = new SolidBrush(_focused ? Theme.Accent : Theme.TextMuted))
             {
                 var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };

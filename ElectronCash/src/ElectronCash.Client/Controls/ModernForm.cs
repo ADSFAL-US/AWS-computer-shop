@@ -151,7 +151,7 @@ public class ModernForm : Form
         if (hoverColor.HasValue && hoverColor.Value == Theme.Danger && (hover || pressed))
             iconColor = Color.White;
 
-        using (var font = new Font("Segoe MDL2 Assets", 12))
+        using (var font = new Font(Theme.IconFontFamily, 12))
         using (var brush = new SolidBrush(iconColor))
         {
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };

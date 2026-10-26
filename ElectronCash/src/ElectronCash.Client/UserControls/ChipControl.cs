@@ -124,7 +124,7 @@ public class ChipControl : Control
         // Иконка
         if (!string.IsNullOrEmpty(_icon))
         {
-            using (var iconFont = new Font("Segoe MDL2 Assets", 12))
+            using (var iconFont = new Font(Theme.IconFontFamily, 12))
             using (var brush = new SolidBrush(txtColor))
             {
                 var iconRect = new Rectangle(x, centerY - 10, 20, 20);
@@ -161,7 +161,7 @@ public class ChipControl : Control
                 }
             }
 
-            using (var iconFont = new Font("Segoe MDL2 Assets", 10))
+            using (var iconFont = new Font(Theme.IconFontFamily, 10))
             using (var brush = new SolidBrush(removeIconColor))
             {
                 var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };

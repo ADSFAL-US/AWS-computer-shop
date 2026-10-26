@@ -30,42 +30,144 @@ public static class Theme
 
     // ============= ШРИФТЫ =============
     private static readonly string[] FontFamilies = { "Segoe UI", "Arial", "Tahoma", "Microsoft Sans Serif" };
-    private static readonly Lazy<FontFamily> _fontFamily = new(() => 
+    private static readonly string[] IconFontFamilies = { "Segoe MDL2 Assets", "Segoe UI Symbol", "Noto Sans Symbols", "Symbola", "DejaVu Sans" };
+    private static FontFamily? _fontFamilyInstance;
+    private static FontFamily? _iconFontFamilyInstance;
+    private static readonly object _fontFamilyLock = new();
+    
+    public static FontFamily FontFamily
     {
-        foreach (var name in FontFamilies)
+        get
         {
-            try { return new FontFamily(name); }
-            catch { }
+            if (_fontFamilyInstance != null) return _fontFamilyInstance;
+            lock (_fontFamilyLock)
+            {
+                if (_fontFamilyInstance != null) return _fontFamilyInstance;
+                
+                foreach (var name in FontFamilies)
+                {
+                    try 
+                    { 
+                        _fontFamilyInstance = new FontFamily(name);
+                        return _fontFamilyInstance;
+                    }
+                    catch { }
+                }
+                _fontFamilyInstance = FontFamily.GenericSansSerif;
+                return _fontFamilyInstance;
+            }
         }
-        return FontFamily.GenericSansSerif;
-    });
+    }
     
-    public static FontFamily FontFamily => _fontFamily.Value;
+    public static FontFamily IconFontFamily
+    {
+        get
+        {
+            if (_iconFontFamilyInstance != null) return _iconFontFamilyInstance;
+            lock (_fontFamilyLock)
+            {
+                if (_iconFontFamilyInstance != null) return _iconFontFamilyInstance;
+                
+                foreach (var name in IconFontFamilies)
+                {
+                    try 
+                    { 
+                        _iconFontFamilyInstance = new FontFamily(name);
+                        return _iconFontFamilyInstance;
+                    }
+                    catch { }
+                }
+                _iconFontFamilyInstance = FontFamily.GenericSansSerif;
+                return _iconFontFamilyInstance;
+            }
+        }
+    }
     
-    private static readonly Lazy<Font> _formTitleFont = new(() => new Font(FontFamily, 20, FontStyle.Bold));
-    private static readonly Lazy<Font> _sectionTitleFont = new(() => new Font(FontFamily, 12, FontStyle.Bold));
-    private static readonly Lazy<Font> _regularFont = new(() => new Font(FontFamily, 10));
-    private static readonly Lazy<Font> _smallFont = new(() => new Font(FontFamily, 9));
-    private static readonly Lazy<Font> _largeNumberFont = new(() => new Font(FontFamily, 28, FontStyle.Bold));
-    private static readonly Lazy<Font> _productNameFont = new(() => new Font(FontFamily, 11, FontStyle.Bold));
+    private static Font? _formTitleFont;
+    private static Font? _sectionTitleFont;
+    private static Font? _regularFont;
+    private static Font? _smallFont;
+    private static Font? _largeNumberFont;
+    private static Font? _productNameFont;
+    private static readonly object _fontLock = new();
     
     /// <summary>Заголовок формы: 20pt SemiBold</summary>
-    public static Font FormTitleFont => _formTitleFont.Value;
+    public static Font FormTitleFont
+    {
+        get
+        {
+            if (_formTitleFont != null) return _formTitleFont;
+            lock (_fontLock)
+            {
+                return _formTitleFont ??= new Font(FontFamily, 20, FontStyle.Bold);
+            }
+        }
+    }
     
     /// <summary>Заголовок секции: 12pt SemiBold</summary>
-    public static Font SectionTitleFont => _sectionTitleFont.Value;
+    public static Font SectionTitleFont
+    {
+        get
+        {
+            if (_sectionTitleFont != null) return _sectionTitleFont;
+            lock (_fontLock)
+            {
+                return _sectionTitleFont ??= new Font(FontFamily, 12, FontStyle.Bold);
+            }
+        }
+    }
     
     /// <summary>Основной текст: 10pt Regular</summary>
-    public static Font RegularFont => _regularFont.Value;
+    public static Font RegularFont
+    {
+        get
+        {
+            if (_regularFont != null) return _regularFont;
+            lock (_fontLock)
+            {
+                return _regularFont ??= new Font(FontFamily, 10);
+            }
+        }
+    }
     
     /// <summary>Мелкий текст: 9pt Regular</summary>
-    public static Font SmallFont => _smallFont.Value;
+    public static Font SmallFont
+    {
+        get
+        {
+            if (_smallFont != null) return _smallFont;
+            lock (_fontLock)
+            {
+                return _smallFont ??= new Font(FontFamily, 9);
+            }
+        }
+    }
     
     /// <summary>Крупные цифры для StatCard: 28pt SemiBold</summary>
-    public static Font LargeNumberFont => _largeNumberFont.Value;
+    public static Font LargeNumberFont
+    {
+        get
+        {
+            if (_largeNumberFont != null) return _largeNumberFont;
+            lock (_fontLock)
+            {
+                return _largeNumberFont ??= new Font(FontFamily, 28, FontStyle.Bold);
+            }
+        }
+    }
     
     /// <summary>Название товара: 11pt SemiBold</summary>
-    public static Font ProductNameFont => _productNameFont.Value;
+    public static Font ProductNameFont
+    {
+        get
+        {
+            if (_productNameFont != null) return _productNameFont;
+            lock (_fontLock)
+            {
+                return _productNameFont ??= new Font(FontFamily, 11, FontStyle.Bold);
+            }
+        }
+    }
 
     // ============= МЕТОДЫ =============
     

@@ -118,7 +118,7 @@ public class Toast : Form
                 _ => "\uE73E"
             };
 
-            using (var iconFont = new Font("Segoe MDL2 Assets", 18))
+            using (var iconFont = new Font(Theme.IconFontFamily, 18))
             using (var brush = new SolidBrush(Color.FromArgb((int)(255 * _opacity), accentColor)))
             {
                 var iconRect = new Rectangle(rect.X + 16, rect.Y + 16, 40, 40);

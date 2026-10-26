@@ -95,7 +95,7 @@ public class StatCard : Control
         // Иконка
         if (!string.IsNullOrEmpty(_icon))
         {
-            using (var iconFont = new Font("Segoe MDL2 Assets", 24))
+            using (var iconFont = new Font(Theme.IconFontFamily, 24))
             using (var brush = new SolidBrush(_accentColor))
             {
                 var iconRect = new Rectangle(rect.X + 16, rect.Y + 16, 40, 40);

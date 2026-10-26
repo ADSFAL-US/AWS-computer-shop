@@ -75,7 +75,7 @@ public class ProductTile : Control
             }
             
             // Иконка категории товара
-            using (var iconFont = new Font("Segoe MDL2 Assets", 48))
+            using (var iconFont = new Font(Theme.IconFontFamily, 48))
             using (var brush = new SolidBrush(Theme.TextMuted))
             {
                 var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
