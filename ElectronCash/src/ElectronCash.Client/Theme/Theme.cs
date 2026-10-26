@@ -53,7 +53,14 @@ public static class Theme
                     }
                     catch { }
                 }
-                _fontFamilyInstance = FontFamily.GenericSansSerif;
+                try 
+                { 
+                    _fontFamilyInstance = FontFamily.GenericSansSerif; 
+                }
+                catch 
+                { 
+                    _fontFamilyInstance = new FontFamily("Arial"); 
+                }
                 return _fontFamilyInstance;
             }
         }
@@ -77,7 +84,14 @@ public static class Theme
                     }
                     catch { }
                 }
-                _iconFontFamilyInstance = FontFamily.GenericSansSerif;
+                try 
+                { 
+                    _iconFontFamilyInstance = FontFamily.GenericSansSerif; 
+                }
+                catch 
+                { 
+                    _iconFontFamilyInstance = new FontFamily("Arial"); 
+                }
                 return _iconFontFamilyInstance;
             }
         }
@@ -99,7 +113,10 @@ public static class Theme
             if (_formTitleFont != null) return _formTitleFont;
             lock (_fontLock)
             {
-                return _formTitleFont ??= new Font(FontFamily, 20, FontStyle.Bold);
+                if (_formTitleFont != null) return _formTitleFont;
+                try { _formTitleFont = new Font(FontFamily, 20, FontStyle.Bold); }
+                catch { _formTitleFont = new Font(FontFamily.GenericSansSerif, 20, FontStyle.Bold); }
+                return _formTitleFont;
             }
         }
     }
@@ -112,7 +129,10 @@ public static class Theme
             if (_sectionTitleFont != null) return _sectionTitleFont;
             lock (_fontLock)
             {
-                return _sectionTitleFont ??= new Font(FontFamily, 12, FontStyle.Bold);
+                if (_sectionTitleFont != null) return _sectionTitleFont;
+                try { _sectionTitleFont = new Font(FontFamily, 12, FontStyle.Bold); }
+                catch { _sectionTitleFont = new Font(FontFamily.GenericSansSerif, 12, FontStyle.Bold); }
+                return _sectionTitleFont;
             }
         }
     }
@@ -125,7 +145,10 @@ public static class Theme
             if (_regularFont != null) return _regularFont;
             lock (_fontLock)
             {
-                return _regularFont ??= new Font(FontFamily, 10);
+                if (_regularFont != null) return _regularFont;
+                try { _regularFont = new Font(FontFamily, 10); }
+                catch { _regularFont = new Font(FontFamily.GenericSansSerif, 10); }
+                return _regularFont;
             }
         }
     }
@@ -138,7 +161,10 @@ public static class Theme
             if (_smallFont != null) return _smallFont;
             lock (_fontLock)
             {
-                return _smallFont ??= new Font(FontFamily, 9);
+                if (_smallFont != null) return _smallFont;
+                try { _smallFont = new Font(FontFamily, 9); }
+                catch { _smallFont = new Font(FontFamily.GenericSansSerif, 9); }
+                return _smallFont;
             }
         }
     }
@@ -151,7 +177,10 @@ public static class Theme
             if (_largeNumberFont != null) return _largeNumberFont;
             lock (_fontLock)
             {
-                return _largeNumberFont ??= new Font(FontFamily, 28, FontStyle.Bold);
+                if (_largeNumberFont != null) return _largeNumberFont;
+                try { _largeNumberFont = new Font(FontFamily, 28, FontStyle.Bold); }
+                catch { _largeNumberFont = new Font(FontFamily.GenericSansSerif, 28, FontStyle.Bold); }
+                return _largeNumberFont;
             }
         }
     }
@@ -164,7 +193,10 @@ public static class Theme
             if (_productNameFont != null) return _productNameFont;
             lock (_fontLock)
             {
-                return _productNameFont ??= new Font(FontFamily, 11, FontStyle.Bold);
+                if (_productNameFont != null) return _productNameFont;
+                try { _productNameFont = new Font(FontFamily, 11, FontStyle.Bold); }
+                catch { _productNameFont = new Font(FontFamily.GenericSansSerif, 11, FontStyle.Bold); }
+                return _productNameFont;
             }
         }
     }
@@ -176,17 +208,27 @@ public static class Theme
     /// </summary>
     public static GraphicsPath RoundedRect(Rectangle rect, int radius)
     {
-        var path = new GraphicsPath();
-        int d = radius * 2;
-        
-        // Углы
-        path.AddArc(rect.X, rect.Y, d, d, 180, 90);
-        path.AddArc(rect.X + rect.Width - d, rect.Y, d, d, 270, 90);
-        path.AddArc(rect.X + rect.Width - d, rect.Y + rect.Height - d, d, d, 0, 90);
-        path.AddArc(rect.X, rect.Y + rect.Height - d, d, d, 90, 90);
-        
-        path.CloseFigure();
-        return path;
+        try
+        {
+            var path = new GraphicsPath();
+            int d = radius * 2;
+            
+            // Углы
+            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
+            path.AddArc(rect.X + rect.Width - d, rect.Y, d, d, 270, 90);
+            path.AddArc(rect.X + rect.Width - d, rect.Y + rect.Height - d, d, d, 0, 90);
+            path.AddArc(rect.X, rect.Y + rect.Height - d, d, d, 90, 90);
+            
+            path.CloseFigure();
+            return path;
+        }
+        catch
+        {
+            // Fallback: simple rectangle
+            var path = new GraphicsPath();
+            path.AddRectangle(rect);
+            return path;
+        }
     }
 
     /// <summary>
@@ -194,18 +236,27 @@ public static class Theme
     /// </summary>
     public static void DrawShadow(Graphics g, Rectangle rect, int offsetY = 4, int blurRadius = 12)
     {
-        // Рисуем несколько полупрозрачных слоёв для эффекта размытия
-        for (int i = blurRadius; i > 0; i--)
+        if (g == null) return;
+        
+        try
         {
-            int alpha = (int)(255 * 0.3 * (1 - (float)i / blurRadius) / 2);
-            if (alpha <= 0) continue;
-            
-            using (var shadowBrush = new SolidBrush(Color.FromArgb(alpha, 0, 0, 0)))
-            using (var path = RoundedRect(
-                new Rectangle(rect.X - i/2, rect.Y + offsetY - i/2, rect.Width + i, rect.Height + i), 8))
+            // Рисуем несколько полупрозрачных слоёв для эффекта размытия
+            for (int i = blurRadius; i > 0; i--)
             {
-                g.FillPath(shadowBrush, path);
+                int alpha = (int)(255 * 0.3 * (1 - (float)i / blurRadius) / 2);
+                if (alpha <= 0) continue;
+                
+                using (var shadowBrush = new SolidBrush(Color.FromArgb(alpha, 0, 0, 0)))
+                using (var path = RoundedRect(
+                    new Rectangle(rect.X - i/2, rect.Y + offsetY - i/2, rect.Width + i, rect.Height + i), 8))
+                {
+                    g.FillPath(shadowBrush, path);
+                }
             }
+        }
+        catch
+        {
+            // Ignore drawing errors
         }
     }
 
@@ -215,17 +266,26 @@ public static class Theme
     public static void DrawText(Graphics g, string text, Font font, Color color, Rectangle rect, 
         StringAlignment horizontalAlign = StringAlignment.Near, StringAlignment verticalAlign = StringAlignment.Near)
     {
-        var stringFormat = new StringFormat
+        if (g == null || font == null || string.IsNullOrEmpty(text)) return;
+        
+        try
         {
-            Alignment = horizontalAlign,
-            LineAlignment = verticalAlign,
-            Trimming = StringTrimming.EllipsisCharacter,
-            FormatFlags = StringFormatFlags.NoWrap
-        };
+            var stringFormat = new StringFormat
+            {
+                Alignment = horizontalAlign,
+                LineAlignment = verticalAlign,
+                Trimming = StringTrimming.EllipsisCharacter,
+                FormatFlags = StringFormatFlags.NoWrap
+            };
 
-        using (var brush = new SolidBrush(color))
+            using (var brush = new SolidBrush(color))
+            {
+                g.DrawString(text, font, brush, rect, stringFormat);
+            }
+        }
+        catch
         {
-            g.DrawString(text, font, brush, rect, stringFormat);
+            // Ignore drawing errors
         }
     }
 
@@ -234,11 +294,18 @@ public static class Theme
     /// </summary>
     public static Brush CreateVerticalGradient(Rectangle rect, Color colorStart, Color colorEnd)
     {
-        return new LinearGradientBrush(
-            new Point(rect.Left, rect.Top),
-            new Point(rect.Left, rect.Bottom),
-            colorStart,
-            colorEnd);
+        try
+        {
+            return new LinearGradientBrush(
+                new Point(rect.Left, rect.Top),
+                new Point(rect.Left, rect.Bottom),
+                colorStart,
+                colorEnd);
+        }
+        catch
+        {
+            return new SolidBrush(colorStart);
+        }
     }
 
     /// <summary>
@@ -246,10 +313,17 @@ public static class Theme
     /// </summary>
     public static Brush CreateHorizontalGradient(Rectangle rect, Color colorStart, Color colorEnd)
     {
-        return new LinearGradientBrush(
-            new Point(rect.Left, rect.Top),
-            new Point(rect.Right, rect.Top),
-            colorStart,
-            colorEnd);
+        try
+        {
+            return new LinearGradientBrush(
+                new Point(rect.Left, rect.Top),
+                new Point(rect.Right, rect.Top),
+                colorStart,
+                colorEnd);
+        }
+        catch
+        {
+            return new SolidBrush(colorStart);
+        }
     }
 }
