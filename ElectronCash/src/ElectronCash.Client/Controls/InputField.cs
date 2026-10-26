@@ -36,7 +36,7 @@ public class InputField : Control
             BorderStyle = BorderStyle.None,
             Font = Theme.RegularFont,
             ForeColor = Theme.TextPrimary,
-            BackColor = Color.Transparent,
+            BackColor = Theme.Surface, // Match parent background (WinForms doesn't support true transparency)
             Location = new Point(48, 12),
             Width = 200,
             Height = 24,

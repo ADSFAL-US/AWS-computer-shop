@@ -95,7 +95,7 @@ public class MainForm : ModernForm
             WrapContents = true,
             FlowDirection = FlowDirection.LeftToRight,
             Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-            BackColor = Color.Transparent
+            BackColor = Theme.Background
         };
         CreateCategoryChips();
 
@@ -108,7 +108,7 @@ public class MainForm : ModernForm
             WrapContents = true,
             FlowDirection = FlowDirection.LeftToRight,
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-            BackColor = Color.Transparent,
+            BackColor = Theme.Background,
             Padding = new Padding(0, 0, 16, 0)
         };
         RenderProducts();
@@ -147,7 +147,7 @@ public class MainForm : ModernForm
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-            BackColor = Color.Transparent
+            BackColor = Theme.Surface
         };
 
         _cartTotalLabel = new Label
