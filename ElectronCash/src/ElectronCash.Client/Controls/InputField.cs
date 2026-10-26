@@ -36,16 +36,18 @@ public class InputField : Control
             BorderStyle = BorderStyle.None,
             Font = Theme.RegularFont,
             ForeColor = Theme.TextPrimary,
-            BackColor = Theme.Surface, // Match parent background (WinForms doesn't support true transparency)
+            BackColor = Theme.Surface, // Match parent background
             Location = new Point(48, 12),
             Width = 200,
             Height = 24,
             UseSystemPasswordChar = isPassword,
             TabStop = true
         };
+        // Ensure TextBox background updates with parent
+        _textBox.BackColor = _hasError ? Color.FromArgb(60, 30, 30) : (_focused ? Theme.SurfaceElevated : Theme.Surface);
         _textBox.TextChanged += (s, e) => { _hasError = false; Invalidate(); };
-        _textBox.Enter += (s, e) => { _focused = true; Invalidate(); };
-        _textBox.Leave += (s, e) => { _focused = false; Invalidate(); };
+        _textBox.Enter += (s, e) => { _focused = true; _textBox.BackColor = Theme.SurfaceElevated; Invalidate(); };
+        _textBox.Leave += (s, e) => { _focused = false; _textBox.BackColor = Theme.Surface; Invalidate(); };
         _textBox.KeyDown += (s, e) => OnKeyDown(e);
         
         Controls.Add(_textBox);
@@ -98,6 +100,9 @@ public class InputField : Control
         // Фон
         Color bgColor = _hasError ? Color.FromArgb(60, 30, 30) : (_focused ? Theme.SurfaceElevated : Theme.Surface);
         Color borderColor = _hasError ? Theme.Danger : (_focused ? Theme.Accent : Theme.Border);
+
+        // Update TextBox background to match
+        _textBox.BackColor = bgColor;
 
         using (var path = Theme.RoundedRect(rect, 8))
         {
@@ -178,6 +183,7 @@ public class InputField : Control
     {
         _textBox.Font = Theme.RegularFont;
         _textBox.ForeColor = Theme.TextPrimary;
+        _textBox.BackColor = _focused ? Theme.SurfaceElevated : Theme.Surface;
         Invalidate();
     }
 }

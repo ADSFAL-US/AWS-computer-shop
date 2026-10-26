@@ -169,29 +169,41 @@ public class FlatButton : Control
         int textWidth = string.IsNullOrEmpty(Text) ? 0 : (int)g.MeasureString(Text, Font).Width;
         int totalWidth = iconWidth + gap + textWidth;
 
+        // If text doesn't fit, reduce font size or truncate
+        if (totalWidth > rect.Width - 32)
+        {
+            textWidth = rect.Width - 32 - iconWidth - gap;
+        }
+
         int startX = (rect.Width - totalWidth) / 2 + rect.X;
         int centerY = rect.Y + rect.Height / 2;
 
-        // Иконка
+        // Иконка - slightly larger rect to prevent clipping
         if (!string.IsNullOrEmpty(_icon))
         {
             using (var iconFont = new Font(Theme.IconFontFamily, 14))
             using (var brush = new SolidBrush(textColor))
             {
-                var iconRect = new Rectangle(startX, centerY - 10, 20, 20);
+                var iconRect = new Rectangle(startX, centerY - 12, 24, 24);
                 var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
                 g.DrawString(_icon, iconFont, brush, iconRect, sf);
             }
             startX += iconWidth + gap;
         }
 
-        // Текст
+        // Текст - prevent wrapping with StringFormatFlags.NoWrap
         if (!string.IsNullOrEmpty(Text))
         {
             using (var brush = new SolidBrush(textColor))
             {
                 var textRect = new Rectangle(startX, rect.Y, textWidth, rect.Height);
-                var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center };
+                var sf = new StringFormat 
+                { 
+                    Alignment = StringAlignment.Near, 
+                    LineAlignment = StringAlignment.Center,
+                    FormatFlags = StringFormatFlags.NoWrap,
+                    Trimming = StringTrimming.EllipsisCharacter
+                };
                 g.DrawString(Text, Font, brush, textRect, sf);
             }
         }

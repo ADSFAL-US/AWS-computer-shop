@@ -86,6 +86,9 @@ public class ChipControl : Control
             int gap = string.IsNullOrEmpty(_icon) || string.IsNullOrEmpty(_text) ? 0 : 6;
             
             Width = padding + iconWidth + gap + textWidth + removeWidth;
+            
+            // Minimum width to prevent text clipping
+            if (Width < 60) Width = 60;
         }
     }
 
@@ -142,7 +145,13 @@ public class ChipControl : Control
             using (var brush = new SolidBrush(txtColor))
             {
                 var textRect = new Rectangle(x, rect.Y, Width - x - (_removable ? 24 : 12), rect.Height);
-                var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter };
+                var sf = new StringFormat 
+                { 
+                    Alignment = StringAlignment.Near, 
+                    LineAlignment = StringAlignment.Center, 
+                    Trimming = StringTrimming.EllipsisCharacter,
+                    FormatFlags = StringFormatFlags.NoWrap
+                };
                 g.DrawString(_text, Font, brush, textRect, sf);
             }
         }

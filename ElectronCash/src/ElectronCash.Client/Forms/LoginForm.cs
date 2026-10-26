@@ -25,78 +25,75 @@ public class LoginForm : ModernForm
     public LoginForm()
     {
         Text = "Электронная касса";
-        Size = new Size(480, 600);
-        MinimumSize = new Size(480, 600);
-        MaximumSize = new Size(480, 600);
-        StartPosition = FormStartPosition.CenterScreen;
-        Padding = new Padding(0, 40, 0, 0);
+            Size = new Size(480, 680);
+            MinimumSize = new Size(480, 680);
+            MaximumSize = new Size(480, 680);
+            StartPosition = FormStartPosition.CenterScreen;
+            Padding = new Padding(0, 40, 0, 0);
 
-        // Поле логина
-        _loginField = new InputField("Логин", "\uE716") // person
-        {
-            Location = new Point(40, 200),
-            Size = new Size(400, 48),
-            TabIndex = 0
-        };
+            // Поле логина
+            _loginField = new InputField("Логин", "\uE716") // person
+            {
+                Location = new Point(40, 220),
+                Size = new Size(400, 48),
+                TabIndex = 0
+            };
 
-        // Поле пароля
-        _passwordField = new InputField("Пароль", "\uE72E", true) // lock
-        {
-            Location = new Point(40, 268),
-            Size = new Size(400, 48),
-            TabIndex = 1
-        };
+            // Поле пароля
+            _passwordField = new InputField("Пароль", "\uE72E", true) // lock
+            {
+                Location = new Point(40, 288),
+                Size = new Size(400, 48),
+                TabIndex = 1
+            };
 
-        // Кнопка входа
-        _loginButton = new FlatButton
-        {
-            Text = "Войти",
-            Variant = ButtonVariant.Primary,
-            Location = new Point(40, 336),
-            Size = new Size(400, 48),
-            Font = Theme.SectionTitleFont,
-            TabIndex = 2
-        };
-        _loginButton.Click += LoginButton_Click;
+            // Кнопка входа
+            _loginButton = new FlatButton
+            {
+                Text = "Войти",
+                Variant = ButtonVariant.Primary,
+                Location = new Point(40, 356),
+                Size = new Size(400, 48),
+                Font = Theme.SectionTitleFont,
+                TabIndex = 2
+            };
+            _loginButton.Click += LoginButton_Click;
 
-        // Метка ошибки
-        _errorLabel = new Label
-        {
-            Text = string.Empty,
-            ForeColor = Theme.Danger,
-            Font = Theme.SmallFont,
-            AutoSize = false,
-            Location = new Point(40, 392),
-            Size = new Size(400, 24),
-            TextAlign = ContentAlignment.MiddleCenter,
-            Visible = false
-        };
+            // Метка ошибки
+            _errorLabel = new Label
+            {
+                Text = string.Empty,
+                ForeColor = Theme.Danger,
+                Font = Theme.SmallFont,
+                AutoSize = false,
+                Location = new Point(40, 412),
+                Size = new Size(400, 24),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Visible = false
+            };
 
-        // Разделитель
-        var separatorPanel = new Panel
-        {
-            Location = new Point(40, 432),
-            Size = new Size(400, 1),
-            BackColor = Theme.Border
-        };
+            // Разделитель
+            var separatorPanel = new Panel
+            {
+                Location = new Point(40, 452),
+                Size = new Size(400, 1),
+                BackColor = Theme.Border
+            };
 
-        var separatorLabel = new Label
-        {
-            Text = "или",
-            Font = Theme.SmallFont,
-            ForeColor = Theme.TextMuted,
-            AutoSize = true,
-            BackColor = Theme.Background,
-            Location = new Point(220, 424)
-        };
+            var separatorLabel = new Label
+            {
+                Text = "или",
+                Font = Theme.SmallFont,
+                ForeColor = Theme.TextMuted,
+                AutoSize = true,
+                BackColor = Theme.Background,
+                Location = new Point(220, 444)
+            };
 
-        // Кнопки быстрого входа
-        _btnCashier = CreateQuickLoginButton("Войти как кассир", "\uE716", 0);
-        _btnManager = CreateQuickLoginButton("Войти как менеджер", "\uE710", 56);
-        _btnAdmin = CreateQuickLoginButton("Войти как админ", "\uE72C", 112);
-
-        // Ссылка на регистрацию
-        _registerLink = new LinkLabel
+            // Кнопки быстрого входа - better spacing
+            _btnCashier = CreateQuickLoginButton("Войти как кассир", "\uE716", 0);
+            _btnManager = CreateQuickLoginButton("Войти как менеджер", "\uE710", 56);
+            _btnAdmin = CreateQuickLoginButton("Войти как админ", "\uE72C", 112);
         {
             Text = "Зарегистрироваться",
             Font = Theme.RegularFont,
@@ -104,7 +101,7 @@ public class LoginForm : ModernForm
             ActiveLinkColor = Theme.AccentHover,
             VisitedLinkColor = Theme.Accent,
             AutoSize = true,
-            Location = new Point(180, 540),
+            Location = new Point(180, 580),
             TabIndex = 6
         };
         _registerLink.LinkClicked += (s, e) => 

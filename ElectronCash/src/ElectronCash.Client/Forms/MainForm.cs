@@ -24,9 +24,6 @@ public class MainForm : ModernForm
     private readonly FlowLayoutPanel _cartItemsPanel;
     private readonly Label _cartTotalLabel;
     private readonly FlatButton _btnCheckout;
-    private readonly ProgressBarCustom _progressBar;
-    private readonly Label _statusLabel;
-    
     private List<Product> _allProducts = new();
     private List<Product> _filteredProducts = new();
     private string _selectedCategory = "Все";
@@ -86,6 +83,26 @@ public class MainForm : ModernForm
         };
         _btnLogout.Click += BtnLogout_Click;
 
+        // Admin button (only for admins)
+        FlatButton? _btnAdmin = null;
+        if (Session.CurrentUser?.Role == Role.Admin)
+        {
+            _btnAdmin = new FlatButton
+            {
+                Text = "Админка",
+                Icon = "\uE72C", // admin
+                Variant = ButtonVariant.Primary,
+                Location = new Point(Width - 480, 60),
+                Size = new Size(120, 40),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            _btnAdmin.Click += (s, e) => 
+            {
+                var adminForm = new AdminForm();
+                adminForm.ShowDialog(this);
+            };
+        }
+
         // Чипы категорий
         _categoryChipsPanel = new FlowLayoutPanel
         {
@@ -130,6 +147,23 @@ public class MainForm : ModernForm
             }
         };
 
+        // Close button for cart sidebar
+        var btnCloseCart = new FlatButton
+        {
+            Text = "",
+            Icon = "\uE711", // close
+            Variant = ButtonVariant.Ghost,
+            Location = new Point(320, 8),
+            Size = new Size(32, 32),
+            Font = Theme.RegularFont,
+            Anchor = AnchorStyles.Top | AnchorStyles.Right
+        };
+        btnCloseCart.Click += (s, e) => 
+        {
+            _cartVisible = false;
+            _cartSidebar.Visible = false;
+        };
+
         _cartTitle = new Label
         {
             Text = "Корзина",
@@ -172,33 +206,11 @@ public class MainForm : ModernForm
         };
         _btnCheckout.Click += BtnCheckout_Click;
 
-        _cartSidebar.Controls.AddRange(new Control[] { _cartTitle, _cartItemsPanel, _cartTotalLabel, _btnCheckout });
+        _cartSidebar.Controls.AddRange(new Control[] { _cartTitle, _cartItemsPanel, _cartTotalLabel, _btnCheckout, btnCloseCart });
 
-        // Прогресс-бар и статус
-        _progressBar = new ProgressBarCustom
-        {
-            Location = new Point(24, Height - 40),
-            Size = new Size(200, 8),
-            Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
-            Visible = false
-        };
-
-        _statusLabel = new Label
-        {
-            Text = "Готово",
-            Font = Theme.SmallFont,
-            ForeColor = Theme.TextSecondary,
-            AutoSize = true,
-            Location = new Point(240, Height - 44),
-            Anchor = AnchorStyles.Bottom | AnchorStyles.Left
-        };
-
-        Controls.AddRange(new Control[]
-        {
-            _searchBox, _btnCart, _btnProfile, _btnLogout,
-            _categoryChipsPanel, _productsPanel,
-            _cartSidebar, _progressBar, _statusLabel
-        });
+        var mainControls = new List<Control> { _searchBox, _btnCart, _btnProfile, _btnLogout, _categoryChipsPanel, _productsPanel, _cartSidebar };
+        if (_btnAdmin != null) mainControls.Add(_btnAdmin);
+        Controls.AddRange(mainControls.ToArray());
 
         // Обновляем корзину при изменении
         Session.CartChanged += Session_CartChanged;
@@ -368,10 +380,218 @@ public class MainForm : ModernForm
             return;
         }
 
-        _progressBar.Visible = true;
-        _progressBar.Indeterminate = true;
-        _statusLabel.Text = "Оформление заказа...";
+        // Show cross-sell dialog before checkout
+        ShowCrossSellDialog();
+    }
+
+    private void ShowCrossSellDialog()
+    {
+        var offers = MockDataService.Instance.GetCrossSellOffers();
+        var accessoryOffers = offers.Where(o => o.Category == "accessory").ToList();
+        var serviceOffers = offers.Where(o => o.Category == "service").ToList();
+
+        var dialog = new Form
+        {
+            Text = "Дополнительные предложения",
+            Size = new Size(500, 500),
+            StartPosition = FormStartPosition.CenterParent,
+            FormBorderStyle = FormBorderStyle.FixedDialog,
+            MaximizeBox = false,
+            MinimizeBox = false,
+            BackColor = Theme.Background,
+            Font = Theme.RegularFont
+        };
+
+        var mainPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            Padding = new Padding(16)
+        };
+
+        // Accessories section
+        if (accessoryOffers.Count > 0)
+        {
+            var sectionLabel = new Label
+            {
+                Text = "Аксессуары",
+                Font = Theme.SectionTitleFont,
+                ForeColor = Theme.TextPrimary,
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, 8)
+            };
+            mainPanel.Controls.Add(sectionLabel);
+
+            foreach (var offer in accessoryOffers)
+            {
+                mainPanel.Controls.Add(CreateOfferControl(offer, true));
+            }
+        }
+
+        // Services section
+        if (serviceOffers.Count > 0)
+        {
+            var sectionLabel = new Label
+            {
+                Text = "Сервисы",
+                Font = Theme.SectionTitleFont,
+                ForeColor = Theme.TextPrimary,
+                AutoSize = true,
+                Margin = new Padding(0, 16, 0, 8)
+            };
+            mainPanel.Controls.Add(sectionLabel);
+
+            foreach (var offer in serviceOffers)
+            {
+                mainPanel.Controls.Add(CreateOfferControl(offer, false));
+            }
+        }
+
+        // Buttons
+        var buttonPanel = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 60,
+            FlowDirection = FlowDirection.RightToLeft,
+            Padding = new Padding(16),
+            BackColor = Theme.Surface
+        };
+
+        var btnSkip = new FlatButton
+        {
+            Text = "Пропустить",
+            Variant = ButtonVariant.Ghost,
+            Size = new Size(120, 40),
+            Font = Theme.RegularFont
+        };
+        btnSkip.Click += (s, e) => { dialog.DialogResult = DialogResult.Cancel; dialog.Close(); };
+
+        var btnContinue = new FlatButton
+        {
+            Text = "Оформить заказ",
+            Variant = ButtonVariant.Primary,
+            Size = new Size(160, 40),
+            Font = Theme.SectionTitleFont
+        };
+        btnContinue.Click += (s, e) => { dialog.DialogResult = DialogResult.OK; dialog.Close(); };
+
+        buttonPanel.Controls.Add(btnContinue);
+        buttonPanel.Controls.Add(btnSkip);
+
+        dialog.Controls.Add(mainPanel);
+        dialog.Controls.Add(buttonPanel);
+
+        if (dialog.ShowDialog(this) == DialogResult.OK)
+        {
+            ProcessCheckout();
+        }
+    }
+
+    private Control CreateOfferControl(CrossSellOffer offer, bool isAccessory)
+    {
+        var panel = new Panel
+        {
+            Height = 60,
+            Width = 440,
+            Margin = new Padding(0, 0, 0, 8),
+            BackColor = Theme.Surface,
+            Padding = new Padding(12)
+        };
+        panel.Paint += (s, e) =>
+        {
+            using (var path = Theme.RoundedRect(panel.ClientRectangle, 8))
+            using (var pen = new Pen(Theme.Border))
+            {
+                e.Graphics.DrawPath(pen, path);
+            }
+        };
+
+        var chk = new CheckBox
+        {
+            Text = "",
+            Location = new Point(8, 16),
+            Size = new Size(24, 24),
+            Tag = offer,
+            BackColor = Color.Transparent
+        };
+        chk.Paint += (s, e) =>
+        {
+            var cb = (CheckBox)s;
+            var rect = new Rectangle(0, 0, 20, 20);
+            using (var path = Theme.RoundedRect(rect, 4))
+            {
+                using (var brush = new SolidBrush(cb.Checked ? Theme.Accent : Theme.Surface))
+                {
+                    e.Graphics.FillPath(brush, path);
+                }
+                using (var pen = new Pen(cb.Checked ? Theme.Accent : Theme.Border, 2))
+                {
+                    e.Graphics.DrawPath(pen, path);
+                }
+                if (cb.Checked)
+                {
+                    using (var pen = new Pen(Theme.Background, 2) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+                    {
+                        e.Graphics.DrawLine(pen, 4, 10, 8, 14);
+                        e.Graphics.DrawLine(pen, 8, 14, 16, 6);
+                    }
+                }
+            }
+        };
+
+        var iconLabel = new Label
+        {
+            Text = offer.Icon,
+            Font = new Font(Theme.IconFontFamily, 24),
+            ForeColor = Theme.Accent,
+            Location = new Point(40, 8),
+            Size = new Size(48, 48),
+            TextAlign = ContentAlignment.MiddleCenter,
+            BackColor = Color.Transparent
+        };
+
+        var nameLabel = new Label
+        {
+            Text = offer.Name,
+            Font = Theme.RegularFont,
+            ForeColor = Theme.TextPrimary,
+            Location = new Point(96, 8),
+            Size = new Size(250, 24),
+            BackColor = Color.Transparent
+        };
+
+        var descLabel = new Label
+        {
+            Text = offer.Description,
+            Font = Theme.SmallFont,
+            ForeColor = Theme.TextSecondary,
+            Location = new Point(96, 32),
+            Size = new Size(250, 20),
+            BackColor = Color.Transparent
+        };
+
+        var priceLabel = new Label
+        {
+            Text = $"{offer.Price:N0} ₽",
+            Font = Theme.SectionTitleFont,
+            ForeColor = Theme.Accent,
+            Location = new Point(360, 16),
+            Size = new Size(80, 28),
+            TextAlign = ContentAlignment.MiddleRight,
+            BackColor = Color.Transparent
+        };
+
+        panel.Controls.AddRange(new Control[] { chk, iconLabel, nameLabel, descLabel, priceLabel });
+        return panel;
+    }
+
+    private void ProcessCheckout()
+    {
         _btnCheckout.Enabled = false;
+        _btnCheckout.Text = "Обработка...";
+        _btnCheckout.Loading = true;
 
         Task.Run(async () =>
         {
@@ -394,10 +614,9 @@ public class MainForm : ModernForm
                     Session.CurrentCart.Clear();
                     Session.RaiseCartChanged();
                     
-                    _progressBar.Visible = false;
-                    _progressBar.Indeterminate = false;
-                    _statusLabel.Text = "Заказ оформлен!";
                     _btnCheckout.Enabled = true;
+                    _btnCheckout.Text = "Оформить заказ";
+                    _btnCheckout.Loading = false;
                     _cartVisible = false;
                     _cartSidebar.Visible = false;
                     

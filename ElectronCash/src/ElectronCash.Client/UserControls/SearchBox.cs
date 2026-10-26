@@ -27,15 +27,15 @@ public class SearchBox : Control
             BorderStyle = BorderStyle.None,
             Font = Theme.RegularFont,
             ForeColor = Theme.TextPrimary,
-            BackColor = Theme.Surface, // Match parent background (WinForms doesn't support true transparency)
+            BackColor = Theme.Surface,
             Location = new Point(40, 8),
             Width = 200,
             Height = 24,
             TabStop = true
         };
         _textBox.TextChanged += (s, e) => Invalidate();
-        _textBox.Enter += (s, e) => { _focused = true; Invalidate(); };
-        _textBox.Leave += (s, e) => { _focused = false; Invalidate(); };
+        _textBox.Enter += (s, e) => { _focused = true; _textBox.BackColor = Theme.SurfaceElevated; Invalidate(); };
+        _textBox.Leave += (s, e) => { _focused = false; _textBox.BackColor = Theme.Surface; Invalidate(); };
         
         Controls.Add(_textBox);
 
@@ -69,6 +69,9 @@ public class SearchBox : Control
         // Фон
         Color bgColor = _focused ? Theme.SurfaceElevated : Theme.Surface;
         Color borderColor = _focused ? Theme.Accent : Theme.Border;
+
+        // Update TextBox background to match
+        _textBox.BackColor = bgColor;
 
         using (var path = Theme.RoundedRect(rect, 8))
         {
@@ -122,6 +125,7 @@ public class SearchBox : Control
     {
         _textBox.Font = Theme.RegularFont;
         _textBox.ForeColor = Theme.TextPrimary;
+        _textBox.BackColor = _focused ? Theme.SurfaceElevated : Theme.Surface;
         Invalidate();
     }
 }

@@ -825,4 +825,51 @@ public class MockDataService
         
         _orders.Add(order);
     }
+
+    /// <summary>Получить всех пользователей (для администратора).</summary>
+    public List<User> GetUsers() => new List<User>(_users);
+
+    /// <summary>Добавить пользователя.</summary>
+    public void AddUser(User user)
+    {
+        user.Id = _users.Any() ? _users.Max(u => u.Id) + 1 : 1;
+        _users.Add(user);
+    }
+
+    /// <summary>Обновить пользователя.</summary>
+    public void UpdateUser(User user)
+    {
+        var existing = _users.FirstOrDefault(u => u.Id == user.Id);
+        if (existing != null)
+        {
+            existing.Login = user.Login;
+            existing.Password = user.Password;
+            existing.FullName = user.FullName;
+            existing.Role = user.Role;
+        }
+    }
+
+    /// <summary>Удалить пользователя.</summary>
+    public void DeleteUser(int id)
+    {
+        var user = _users.FirstOrDefault(u => u.Id == id);
+        if (user != null)
+            _users.Remove(user);
+    }
+
+    /// <summary>Добавить IP-адрес в whitelist.</summary>
+    public void AddIpEntry(IpEntry entry)
+    {
+        entry.Id = _ipWhitelist.Any() ? _ipWhitelist.Max(i => i.Id) + 1 : 1;
+        entry.AddedAt = DateTime.Now;
+        _ipWhitelist.Add(entry);
+    }
+
+    /// <summary>Удалить IP-адрес из whitelist.</summary>
+    public void DeleteIpEntry(int id)
+    {
+        var entry = _ipWhitelist.FirstOrDefault(i => i.Id == id);
+        if (entry != null)
+            _ipWhitelist.Remove(entry);
+    }
 }
