@@ -242,9 +242,16 @@ public class ModernForm : Form
     {
         if (Width > 0 && Height > 0)
         {
-            using (var path = Theme.RoundedRect(new Rectangle(0, 0, Width, Height), CornerRadius))
+            try
             {
-                Region = new Region(path);
+                using (var path = Theme.RoundedRect(new Rectangle(0, 0, Width, Height), CornerRadius))
+                {
+                    Region = new Region(path);
+                }
+            }
+            catch
+            {
+                // Ignore region errors on Linux
             }
         }
     }

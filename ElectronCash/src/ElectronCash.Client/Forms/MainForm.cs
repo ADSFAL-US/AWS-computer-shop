@@ -212,19 +212,25 @@ public class MainForm : ModernForm
     {
         _categoryChipsPanel.Controls.Clear();
         
-        var categories = new[] { "Все" }.Concat(_allProducts.Select(p => p.Icon).Distinct().OrderBy(c => c)).ToArray();
+        var categories = new[] { "Все" }.Concat(
+            _allProducts
+                .Select(p => MockDataService.Instance.GetCategories().FirstOrDefault(c => c.Id == p.CategoryId)?.Name)
+                .Where(name => !string.IsNullOrEmpty(name))
+                .Distinct()
+                .OrderBy(c => c)
+        ).ToArray();
         
         foreach (var category in categories)
         {
             var chip = new ChipControl
             {
-                ChipText = category,
+                ChipText = category!,
                 Selected = category == _selectedCategory,
                 BackgroundColor = Theme.SurfaceElevated,
                 TextColor = Theme.TextPrimary,
                 Margin = new Padding(0, 0, 8, 0)
             };
-            chip.Click += (s, e) => CategoryChip_Click(chip, category);
+            chip.Click += (s, e) => CategoryChip_Click(chip, category!);
             _categoryChipsPanel.Controls.Add(chip);
         }
     }
@@ -254,9 +260,11 @@ public class MainForm : ModernForm
         var searchText = _searchBox.Text.ToLower().Trim();
         
         _filteredProducts = _allProducts.Where(p => 
-            (string.IsNullOrEmpty(searchText) || p.Name.ToLower().Contains(searchText) || p.Icon.ToLower().Contains(searchText)) &&
-            (_selectedCategory == "Все" || p.Icon == _selectedCategory)
-        ).ToList();
+        {
+            var categoryName = MockDataService.Instance.GetCategories().FirstOrDefault(c => c.Id == p.CategoryId)?.Name ?? string.Empty;
+            return (string.IsNullOrEmpty(searchText) || p.Name.ToLower().Contains(searchText) || categoryName.ToLower().Contains(searchText)) &&
+                   (_selectedCategory == "Все" || categoryName == _selectedCategory);
+        }).ToList();
         
         RenderProducts();
     }

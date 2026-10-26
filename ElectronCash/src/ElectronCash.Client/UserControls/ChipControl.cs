@@ -77,6 +77,8 @@ public class ChipControl : Control
     {
         using (var g = CreateGraphics())
         {
+            if (g == null) return;
+            
             int textWidth = string.IsNullOrEmpty(_text) ? 0 : (int)g.MeasureString(_text, Font).Width;
             int iconWidth = string.IsNullOrEmpty(_icon) ? 0 : 20;
             int removeWidth = _removable ? 24 : 0;
