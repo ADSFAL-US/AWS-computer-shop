@@ -13,14 +13,23 @@ public class ProductTile : Control
     private Product? _product;
     private bool _hover;
     private bool _pressed;
+        
+    // Ideal dimensions
+    private const int IdealWidth = 220;
+    private const int IdealHeight = 300;
+    private const int MinWidth = 180;
+    private const int MaxWidth = 280;
+    private const int MinHeight = 260;
+    private const int MaxHeight = 340;
 
     public ProductTile()
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | 
                  ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         DoubleBuffered = true;
-        Size = new Size(200, 280);
-        MinimumSize = new Size(180, 260);
+        Size = new Size(IdealWidth, IdealHeight);
+        MinimumSize = new Size(MinWidth, MinHeight);
+        MaximumSize = new Size(MaxWidth, MaxHeight);
         Cursor = Cursors.Hand;
         Font = Theme.RegularFont;
     }

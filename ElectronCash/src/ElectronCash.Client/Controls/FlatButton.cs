@@ -26,6 +26,7 @@ public class FlatButton : Control
     private bool _hover;
     private bool _pressed;
     private float _loadingAngle;
+    private bool _autoSize = false;
 
     public FlatButton()
     {
@@ -39,14 +40,25 @@ public class FlatButton : Control
         Padding = new Padding(16, 0, 16, 0);
     }
 
+    /// <summary>Автоматически подстраивать размер под контент.</summary>
+    public bool AutoSize
+    {
+        get => _autoSize;
+        set 
+        { 
+            _autoSize = value; 
+            if (value) UpdateSizeFromContent();
+        }
+    }
+
     /// <summary>Текст кнопки.</summary>
-    public override string? Text { get => base.Text; set { base.Text = value ?? string.Empty; Invalidate(); } }
+    public override string? Text { get => base.Text; set { base.Text = value ?? string.Empty; if (_autoSize) UpdateSizeFromContent(); Invalidate(); } }
 
     /// <summary>Иконка (Segoe MDL2 Assets Unicode).</summary>
     public string Icon
     {
         get => _icon;
-        set { _icon = value ?? string.Empty; Invalidate(); }
+        set { _icon = value ?? string.Empty; if (_autoSize) UpdateSizeFromContent(); Invalidate(); }
     }
 
     /// <summary>Вариант стиля кнопки.</summary>
@@ -76,7 +88,32 @@ public class FlatButton : Control
         }
     }
 
+        /// <summary>Выравнивание текста и иконки внутри кнопки.</summary>
+        public ContentAlignment TextAlign { get; set; } = ContentAlignment.MiddleCenter;
+
     private readonly System.Windows.Forms.Timer _loadingTimer = new() { Interval = 16 };
+
+    private void UpdateSizeFromContent()
+    {
+        using (var g = CreateGraphics())
+        {
+            if (g == null) return;
+                
+            int iconWidth = string.IsNullOrEmpty(_icon) ? 0 : 20;
+            int gap = string.IsNullOrEmpty(_icon) || string.IsNullOrEmpty(Text) ? 0 : 8;
+            int textWidth = string.IsNullOrEmpty(Text) ? 0 : (int)Math.Ceiling(g.MeasureString(Text, Font).Width);
+            int totalContentWidth = iconWidth + gap + textWidth;
+            int paddingHorizontal = Padding.Horizontal;
+                
+            int newWidth = Math.Max(MinimumSize.Width, totalContentWidth + paddingHorizontal);
+            int newHeight = Math.Max(MinimumSize.Height, 40);
+                
+            if (Width != newWidth || Height != newHeight)
+            {
+                Size = new Size(newWidth, newHeight);
+            }
+        }
+    }
 
     protected override void OnHandleCreated(EventArgs e)
     {
@@ -87,6 +124,23 @@ public class FlatButton : Control
             if (_loadingAngle >= 360f) _loadingAngle = 0f;
             Invalidate();
         };
+            
+        if (_autoSize)
+        {
+            UpdateSizeFromContent();
+        }
+    }
+
+    protected override void OnFontChanged(EventArgs e)
+    {
+        base.OnFontChanged(e);
+        if (_autoSize) UpdateSizeFromContent();
+    }
+
+    protected override void OnPaddingChanged(EventArgs e)
+    {
+        base.OnPaddingChanged(e);
+        if (_autoSize) UpdateSizeFromContent();
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -166,16 +220,32 @@ public class FlatButton : Control
     {
         int iconWidth = string.IsNullOrEmpty(_icon) ? 0 : 20;
         int gap = string.IsNullOrEmpty(_icon) || string.IsNullOrEmpty(Text) ? 0 : 8;
-        int textWidth = string.IsNullOrEmpty(Text) ? 0 : (int)g.MeasureString(Text, Font).Width;
+        int textWidth = string.IsNullOrEmpty(Text) ? 0 : (int)Math.Ceiling(g.MeasureString(Text, Font).Width);
         int totalWidth = iconWidth + gap + textWidth;
 
-        // If text doesn't fit, reduce font size or truncate
-        if (totalWidth > rect.Width - 32)
+        // If text doesn't fit and not auto-sized, truncate
+        if (!_autoSize && totalWidth > rect.Width - 32)
         {
             textWidth = rect.Width - 32 - iconWidth - gap;
         }
 
-        int startX = (rect.Width - totalWidth) / 2 + rect.X;
+        // Calculate startX based on TextAlign
+        int startX;
+        var hAlign = GetHorizontalAlignment(TextAlign);
+        switch (hAlign)
+        {
+            case StringAlignment.Near:
+                startX = rect.X + Padding.Left;
+                break;
+            case StringAlignment.Far:
+                startX = rect.X + rect.Width - Padding.Right - totalWidth;
+                break;
+            case StringAlignment.Center:
+            default:
+                startX = (rect.Width - totalWidth) / 2 + rect.X;
+                break;
+        }
+            
         int centerY = rect.Y + rect.Height / 2;
 
         // Иконка - slightly larger rect to prevent clipping
@@ -200,13 +270,33 @@ public class FlatButton : Control
                 var sf = new StringFormat 
                 { 
                     Alignment = StringAlignment.Near, 
-                    LineAlignment = StringAlignment.Center,
+                    LineAlignment = GetVerticalAlignment(TextAlign),
                     FormatFlags = StringFormatFlags.NoWrap,
                     Trimming = StringTrimming.EllipsisCharacter
                 };
                 g.DrawString(Text, Font, brush, textRect, sf);
             }
         }
+    }
+
+    private StringAlignment GetHorizontalAlignment(ContentAlignment align)
+    {
+        return align switch
+        {
+            ContentAlignment.TopLeft or ContentAlignment.MiddleLeft or ContentAlignment.BottomLeft => StringAlignment.Near,
+            ContentAlignment.TopRight or ContentAlignment.MiddleRight or ContentAlignment.BottomRight => StringAlignment.Far,
+            _ => StringAlignment.Center
+        };
+    }
+
+    private StringAlignment GetVerticalAlignment(ContentAlignment align)
+    {
+        return align switch
+        {
+            ContentAlignment.TopLeft or ContentAlignment.TopCenter or ContentAlignment.TopRight => StringAlignment.Near,
+            ContentAlignment.BottomLeft or ContentAlignment.BottomCenter or ContentAlignment.BottomRight => StringAlignment.Far,
+            _ => StringAlignment.Center
+        };
     }
 
     private void DrawSpinner(Graphics g, Rectangle rect)

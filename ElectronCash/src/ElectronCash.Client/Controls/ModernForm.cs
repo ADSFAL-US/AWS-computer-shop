@@ -66,46 +66,53 @@ public class ModernForm : Form
         g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
         var clientRect = ClientRectangle;
+            bool isMaximized = WindowState == FormWindowState.Maximized;
+            int radius = isMaximized ? 0 : CornerRadius;
 
-        // Фон формы
-        using (var bgBrush = new SolidBrush(Theme.Background))
-        {
-            g.FillPath(bgBrush, Theme.RoundedRect(clientRect, CornerRadius));
+            // Фон формы
+            using (var bgBrush = new SolidBrush(Theme.Background))
+            {
+                g.FillPath(bgBrush, Theme.RoundedRect(clientRect, radius));
+            }
+
+            // Тень (не рисуем тень в максимизированном состоянии)
+            if (!isMaximized)
+            {
+                Theme.DrawShadow(g, clientRect);
+            }
+
+            // Заголовок
+            DrawTitleBar(g);
+
+            // Кнопки управления окном
+            DrawWindowButtons(g);
         }
-
-        // Тень (рисуем за формой)
-        Theme.DrawShadow(g, clientRect);
-
-        // Заголовок
-        DrawTitleBar(g);
-
-        // Кнопки управления окном
-        DrawWindowButtons(g);
-    }
 
     private void DrawTitleBar(Graphics g)
     {
         var titleRect = new Rectangle(0, 0, Width, TitleBarHeight);
+            bool isMaximized = WindowState == FormWindowState.Maximized;
+            int radius = isMaximized ? 0 : CornerRadius;
         
-        using (var path = Theme.RoundedRect(titleRect, CornerRadius))
-        {
-            // Обрезаем нижние углы заголовка
-            var clipRect = new Rectangle(0, 0, Width, TitleBarHeight);
-            var clipPath = new GraphicsPath();
-            clipPath.AddRectangle(clipRect);
-            g.SetClip(clipPath);
-            
-            using (var brush = new SolidBrush(Theme.SurfaceElevated))
+            using (var path = Theme.RoundedRect(titleRect, radius))
             {
-                g.FillPath(brush, path);
+                // Обрезаем нижние углы заголовка
+                var clipRect = new Rectangle(0, 0, Width, TitleBarHeight);
+                var clipPath = new GraphicsPath();
+                clipPath.AddRectangle(clipRect);
+                g.SetClip(clipPath);
+            
+                using (var brush = new SolidBrush(Theme.SurfaceElevated))
+                {
+                    g.FillPath(brush, path);
+                }
+                g.ResetClip();
             }
-            g.ResetClip();
-        }
 
-        // Текст заголовка
-        var textRect = new Rectangle(16, 0, Width - 120, TitleBarHeight);
-        Theme.DrawText(g, Text, Theme.SectionTitleFont, Theme.TextPrimary, textRect, StringAlignment.Near, StringAlignment.Center);
-    }
+            // Текст заголовка
+            var textRect = new Rectangle(16, 0, Width - 120, TitleBarHeight);
+            Theme.DrawText(g, Text, Theme.SectionTitleFont, Theme.TextPrimary, textRect, StringAlignment.Near, StringAlignment.Center);
+        }
 
     private void DrawWindowButtons(Graphics g)
     {
@@ -244,17 +251,25 @@ public class ModernForm : Form
         {
             try
             {
-                using (var path = Theme.RoundedRect(new Rectangle(0, 0, Width, Height), CornerRadius))
+                    // Remove rounded corners when maximized (fullscreen)
+                    if (WindowState == FormWindowState.Maximized)
+                    {
+                        Region = new Region(new Rectangle(0, 0, Width, Height));
+                    }
+                    else
+                    {
+                        using (var path = Theme.RoundedRect(new Rectangle(0, 0, Width, Height), CornerRadius))
+                        {
+                            Region = new Region(path);
+                        }
+                    }
+                }
+                catch
                 {
-                    Region = new Region(path);
+                    // Ignore region errors on Linux
                 }
             }
-            catch
-            {
-                // Ignore region errors on Linux
-            }
         }
-    }
 
     /// <summary>
     /// Рекурсивно применяет тему ко всем контролам.

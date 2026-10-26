@@ -130,11 +130,11 @@ public class MainForm : ModernForm
         };
         RenderProducts();
 
-        // Боковая панель корзины (изначально скрыта)
+        // Боковая панель корзины (изначально скрыта) - wider at 420px
         _cartSidebar = new Panel
         {
             Location = new Point(Width, 40),
-            Size = new Size(360, Height - 40),
+                    Size = new Size(420, Height - 40),
             BackColor = Theme.Surface,
             Visible = false,
             Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right
@@ -153,8 +153,8 @@ public class MainForm : ModernForm
             Text = "",
             Icon = "\uE711", // close
             Variant = ButtonVariant.Ghost,
-            Location = new Point(320, 8),
-            Size = new Size(32, 32),
+                    Location = new Point(360, 12),
+                    Size = new Size(40, 40),
             Font = Theme.RegularFont,
             Anchor = AnchorStyles.Top | AnchorStyles.Right
         };
@@ -176,7 +176,7 @@ public class MainForm : ModernForm
         _cartItemsPanel = new FlowLayoutPanel
         {
             Location = new Point(16, 56),
-            Size = new Size(328, Height - 200),
+                    Size = new Size(388, Height - 200),
             AutoScroll = true,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
@@ -200,7 +200,7 @@ public class MainForm : ModernForm
             Icon = "\uE73E",
             Variant = ButtonVariant.Primary,
             Location = new Point(16, Height - 100),
-            Size = new Size(328, 48),
+                    Size = new Size(388, 48),
             Font = Theme.SectionTitleFont,
             Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
         };
@@ -295,7 +295,10 @@ public class MainForm : ModernForm
             tile.AddToCartClicked += (s, e) => AddToCart(product);
             _productsPanel.Controls.Add(tile);
         }
-    }
+        
+            // Calculate optimal tile sizes after adding all products
+            RecalculateProductTileSizes();
+        }
 
     private void AddToCart(Product product)
     {
@@ -338,7 +341,7 @@ public class MainForm : ModernForm
             {
                 Item = item,
                 Margin = new Padding(0, 0, 0, 8),
-                Width = 328
+                            Width = 388
             };
             row.QuantityChanged += (s, qty) => 
             {
@@ -363,14 +366,15 @@ public class MainForm : ModernForm
         
         if (_cartVisible)
         {
-            _cartSidebar.Location = new Point(Width - 360, 40);
-            _cartSidebar.Size = new Size(360, Height - 40);
-            _cartItemsPanel.Size = new Size(328, Height - 200);
+                _cartSidebar.Location = new Point(Width - 420, 40);
+                _cartSidebar.Size = new Size(420, Height - 40);
+                _cartItemsPanel.Size = new Size(388, Height - 200);
             _cartTotalLabel.Location = new Point(16, Height - 120);
             _btnCheckout.Location = new Point(16, Height - 100);
             _cartSidebar.BringToFront();
         }
-    }
+            // Products panel size doesn't change - cart overlays on top
+        }
 
     private void BtnCheckout_Click(object? sender, EventArgs e)
     {
@@ -638,16 +642,59 @@ public class MainForm : ModernForm
     {
         if (_cartVisible)
         {
-            _cartSidebar.Location = new Point(Width - 360, 40);
-            _cartSidebar.Size = new Size(360, Height - 40);
-            _cartItemsPanel.Size = new Size(328, Height - 200);
+                _cartSidebar.Location = new Point(Width - 420, 40);
+                _cartSidebar.Size = new Size(420, Height - 40);
+                _cartItemsPanel.Size = new Size(388, Height - 200);
             _cartTotalLabel.Location = new Point(16, Height - 120);
             _btnCheckout.Location = new Point(16, Height - 100);
-        }
+                _cartSidebar.BringToFront();
+            }
         
-        _categoryChipsPanel.Size = new Size(Width - 48, 40);
-        _productsPanel.Size = new Size(_cartVisible ? Width - 408 : Width - 48, Height - 240);
-    }
+            _categoryChipsPanel.Size = new Size(Width - 48, 40);
+            // Products panel always uses full width - cart overlays on top (never shifts)
+            _productsPanel.Size = new Size(Width - 48, Height - 240);
+        
+            // Recalculate product tile sizes to fill available width optimally
+            RecalculateProductTileSizes();
+        }
+
+        private void RecalculateProductTileSizes()
+        {
+            if (_productsPanel.Controls.Count == 0) return;
+        
+            // Available width for products (accounting for padding and scrollbar)
+            int availableWidth = _productsPanel.ClientSize.Width - 16; // 16px right padding
+            if (_productsPanel.VerticalScroll.Visible)
+                availableWidth -= SystemInformation.VerticalScrollBarWidth;
+        
+            if (availableWidth < 200) availableWidth = 200;
+        
+            // Calculate optimal tile width to fill the row
+            const int idealTileWidth = 220;
+            const int minTileWidth = 180;
+            const int maxTileWidth = 280;
+            const int tileMargin = 16; // right margin between tiles
+        
+            // How many tiles can fit in a row
+            int tilesPerRow = Math.Max(1, (availableWidth + tileMargin) / (idealTileWidth + tileMargin));
+        
+            // Calculate actual tile width to perfectly fill the row
+            int tileWidth = (availableWidth - (tilesPerRow - 1) * tileMargin) / tilesPerRow;
+            tileWidth = Math.Clamp(tileWidth, minTileWidth, maxTileWidth);
+        
+            // Calculate proportional height (maintain aspect ratio ~220:300 = 0.733)
+            int tileHeight = (int)(tileWidth * 300.0 / 220.0);
+            tileHeight = Math.Clamp(tileHeight, 260, 340);
+        
+            // Apply to all product tiles
+            foreach (Control ctrl in _productsPanel.Controls)
+            {
+                if (ctrl is ProductTile tile)
+                {
+                    tile.Size = new Size(tileWidth, tileHeight);
+                }
+            }
+        }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
