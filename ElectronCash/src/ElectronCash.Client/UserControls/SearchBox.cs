@@ -20,8 +20,6 @@ public class SearchBox : Control
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | 
                  ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         DoubleBuffered = true;
-        Height = 40;
-        MinimumSize = new Size(200, 40);
         Font = Theme.RegularFont;
 
         _textBox = new TextBox
@@ -40,6 +38,10 @@ public class SearchBox : Control
         _textBox.Leave += (s, e) => { _focused = false; Invalidate(); };
         
         Controls.Add(_textBox);
+
+        // Set size AFTER _textBox is created to avoid OnResize accessing null _textBox
+        Height = 40;
+        MinimumSize = new Size(200, 40);
     }
 
     public override string? Text 
@@ -110,7 +112,10 @@ public class SearchBox : Control
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
-        _textBox.Width = Width - 80;
+        if (_textBox != null)
+        {
+            _textBox.Width = Width - 80;
+        }
     }
 
     public void ApplyTheme()

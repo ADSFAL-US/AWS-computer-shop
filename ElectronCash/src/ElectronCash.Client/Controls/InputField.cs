@@ -29,8 +29,6 @@ public class InputField : Control
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | 
                  ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         DoubleBuffered = true;
-        Height = 48;
-        MinimumSize = new Size(200, 48);
         Font = Theme.RegularFont;
 
         _textBox = new TextBox
@@ -51,6 +49,10 @@ public class InputField : Control
         _textBox.KeyDown += (s, e) => OnKeyDown(e);
         
         Controls.Add(_textBox);
+
+        // Set size AFTER _textBox is created to avoid OnResize accessing null _textBox
+        Height = 48;
+        MinimumSize = new Size(200, 48);
     }
 
     public override string? Text 
@@ -166,7 +168,10 @@ public class InputField : Control
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
-        _textBox.Width = Width - 96;
+        if (_textBox != null)
+        {
+            _textBox.Width = Width - 96;
+        }
     }
 
     public void ApplyTheme()
