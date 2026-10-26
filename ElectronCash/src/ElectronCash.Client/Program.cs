@@ -17,15 +17,15 @@ static class Program
         // Global exception handler
         Application.ThreadException += (sender, e) =>
         {
-            MessageBox.Show($"Необработанная ошибка: {e.Exception.Message}", "Ошибка", 
-                MessageBoxButtons.OK, MessageBoxIcon.Error);
+            var msg = $"Необработанная ошибка:\n{e.Exception.Message}\n\nStackTrace:\n{e.Exception.StackTrace}";
+            MessageBox.Show(msg, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
         };
         AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
         {
             if (e.ExceptionObject is Exception ex)
             {
-                MessageBox.Show($"Критическая ошибка: {ex.Message}", "Критическая ошибка", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                var msg = $"Критическая ошибка:\n{ex.Message}\n\nStackTrace:\n{ex.StackTrace}";
+                MessageBox.Show(msg, "Критическая ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         };
 

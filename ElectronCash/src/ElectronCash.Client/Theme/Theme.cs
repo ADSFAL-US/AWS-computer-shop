@@ -35,6 +35,19 @@ public static class Theme
     private static FontFamily? _iconFontFamilyInstance;
     private static readonly object _fontFamilyLock = new();
     
+    // Pre-initialize fonts at startup to catch issues early
+    static Theme()
+    {
+        try { _ = FontFamily; } catch { }
+        try { _ = IconFontFamily; } catch { }
+        try { _ = RegularFont; } catch { }
+        try { _ = SmallFont; } catch { }
+        try { _ = SectionTitleFont; } catch { }
+        try { _ = FormTitleFont; } catch { }
+        try { _ = LargeNumberFont; } catch { }
+        try { _ = ProductNameFont; } catch { }
+    }
+    
     public static FontFamily FontFamily
     {
         get
