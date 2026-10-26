@@ -14,8 +14,6 @@ public class ModernForm : Form
     private const int ButtonSize = 36;
     private const int ButtonMargin = 8;
 
-    private bool _isDragging;
-    private Point _dragStart;
     private Rectangle _closeButtonRect;
     private Rectangle _maximizeButtonRect;
     private Rectangle _minimizeButtonRect;

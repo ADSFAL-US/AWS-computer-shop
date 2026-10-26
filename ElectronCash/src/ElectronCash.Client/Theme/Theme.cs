@@ -28,7 +28,7 @@ public static class Theme
     public static readonly Color Info = Color.FromArgb(96, 165, 250);               // #60A5FA
 
     // ============= ШРИФТЫ =============
-    private static readonly string FontFamily = "Segoe UI";
+    public static readonly string FontFamily = "Segoe UI";
     
     /// <summary>Заголовок формы: 20pt SemiBold</summary>
     public static Font FormTitleFont => new Font(FontFamily, 20, FontStyle.Bold);

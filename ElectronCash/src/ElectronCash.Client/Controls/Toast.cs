@@ -23,7 +23,7 @@ public class Toast : Form
     private static readonly object _queueLock = new();
     private const int ToastWidth = 360;
     private const int ToastHeight = 72;
-    private const int Margin = 16;
+    private new const int Margin = 16;
     private const int Gap = 8;
 
     private readonly ToastType _type;
