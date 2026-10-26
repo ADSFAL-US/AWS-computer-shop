@@ -40,7 +40,7 @@ public class FlatButton : Control
     }
 
     /// <summary>Текст кнопки.</summary>
-    public override string Text { get => base.Text; set { base.Text = value ?? string.Empty; Invalidate(); } }
+    public override string? Text { get => base.Text; set { base.Text = value ?? string.Empty; Invalidate(); } }
 
     /// <summary>Иконка (Segoe MDL2 Assets Unicode).</summary>
     public string Icon

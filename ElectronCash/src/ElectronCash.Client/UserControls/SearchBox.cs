@@ -42,10 +42,10 @@ public class SearchBox : Control
         Controls.Add(_textBox);
     }
 
-    public override string Text 
+    public override string? Text 
     { 
         get => _textBox.Text; 
-        set => _textBox.Text = value; 
+        set => _textBox.Text = value ?? string.Empty; 
     }
 
     public new event EventHandler? TextChanged

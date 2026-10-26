@@ -53,7 +53,7 @@ public class InputField : Control
         Controls.Add(_textBox);
     }
 
-    public override string Text 
+    public override string? Text 
     { 
         get => _textBox.Text; 
         set => _textBox.Text = value ?? string.Empty; 

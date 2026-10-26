@@ -29,25 +29,43 @@ public static class Theme
     public static readonly Color Info = Color.FromArgb(96, 165, 250);               // #60A5FA
 
     // ============= ШРИФТЫ =============
-    public static readonly string FontFamily = "Segoe UI";
+    private static readonly string[] FontFamilies = { "Segoe UI", "Arial", "Tahoma", "Microsoft Sans Serif" };
+    private static readonly Lazy<FontFamily> _fontFamily = new(() => 
+    {
+        foreach (var name in FontFamilies)
+        {
+            try { return new FontFamily(name); }
+            catch { }
+        }
+        return FontFamily.GenericSansSerif;
+    });
+    
+    public static FontFamily FontFamily => _fontFamily.Value;
+    
+    private static readonly Lazy<Font> _formTitleFont = new(() => new Font(FontFamily, 20, FontStyle.Bold));
+    private static readonly Lazy<Font> _sectionTitleFont = new(() => new Font(FontFamily, 12, FontStyle.Bold));
+    private static readonly Lazy<Font> _regularFont = new(() => new Font(FontFamily, 10));
+    private static readonly Lazy<Font> _smallFont = new(() => new Font(FontFamily, 9));
+    private static readonly Lazy<Font> _largeNumberFont = new(() => new Font(FontFamily, 28, FontStyle.Bold));
+    private static readonly Lazy<Font> _productNameFont = new(() => new Font(FontFamily, 11, FontStyle.Bold));
     
     /// <summary>Заголовок формы: 20pt SemiBold</summary>
-    public static Font FormTitleFont => new Font(FontFamily, 20, FontStyle.Bold);
+    public static Font FormTitleFont => _formTitleFont.Value;
     
     /// <summary>Заголовок секции: 12pt SemiBold</summary>
-    public static Font SectionTitleFont => new Font(FontFamily, 12, FontStyle.Bold);
+    public static Font SectionTitleFont => _sectionTitleFont.Value;
     
     /// <summary>Основной текст: 10pt Regular</summary>
-    public static Font RegularFont => new Font(FontFamily, 10);
+    public static Font RegularFont => _regularFont.Value;
     
     /// <summary>Мелкий текст: 9pt Regular</summary>
-    public static Font SmallFont => new Font(FontFamily, 9);
+    public static Font SmallFont => _smallFont.Value;
     
     /// <summary>Крупные цифры для StatCard: 28pt SemiBold</summary>
-    public static Font LargeNumberFont => new Font(FontFamily, 28, FontStyle.Bold);
+    public static Font LargeNumberFont => _largeNumberFont.Value;
     
     /// <summary>Название товара: 11pt SemiBold</summary>
-    public static Font ProductNameFont => new Font(FontFamily, 11, FontStyle.Bold);
+    public static Font ProductNameFont => _productNameFont.Value;
 
     // ============= МЕТОДЫ =============
     
