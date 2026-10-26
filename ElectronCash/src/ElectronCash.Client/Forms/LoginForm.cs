@@ -3,7 +3,7 @@ using System.Drawing.Drawing2D;
 using ElectronCash.Client.Controls;
 using ElectronCash.Client.Models;
 using ElectronCash.Client.Services;
-using ElectronCash.Client.Theme;
+using ElectronCash.Client.Theming;
 
 namespace ElectronCash.Client.Forms;
 

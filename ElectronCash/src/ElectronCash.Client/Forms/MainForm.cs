@@ -4,7 +4,7 @@ using ElectronCash.Client.Controls;
 using ElectronCash.Client.Models;
 using ElectronCash.Client.Services;
 using ElectronCash.Client.UserControls;
-using ElectronCash.Client.Theme;
+using ElectronCash.Client.Theming;
 
 namespace ElectronCash.Client.Forms;
 
@@ -295,7 +295,7 @@ public class MainForm : ModernForm
             });
         }
         
-        Session.CartChanged?.Invoke();
+        Session.RaiseCartChanged();
         Toast.Show(this, $"{product.Name} добавлен в корзину", ToastType.Success);
     }
 
@@ -323,12 +323,12 @@ public class MainForm : ModernForm
             row.QuantityChanged += (s, qty) => 
             {
                 item.Quantity = qty;
-                Session.CartChanged?.Invoke();
+                Session.RaiseCartChanged();
             };
             row.RemoveClicked += (s, e) => 
             {
                 Session.CurrentCart.Remove(item);
-                Session.CartChanged?.Invoke();
+                Session.RaiseCartChanged();
             };
             _cartItemsPanel.Controls.Add(row);
         }
@@ -384,7 +384,7 @@ public class MainForm : ModernForm
                     
                     MockDataService.Instance.AddOrder(order);
                     Session.CurrentCart.Clear();
-                    Session.CartChanged?.Invoke();
+                    Session.RaiseCartChanged();
                     
                     _progressBar.Visible = false;
                     _progressBar.Indeterminate = false;

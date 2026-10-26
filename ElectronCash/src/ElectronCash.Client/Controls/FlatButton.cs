@@ -1,6 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using ElectronCash.Client.Theme;
+using ElectronCash.Client.Theming;
 
 namespace ElectronCash.Client.Controls;
 

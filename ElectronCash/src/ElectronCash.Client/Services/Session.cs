@@ -48,6 +48,9 @@ public static class Session
     /// <summary>Событие, вызываемое при изменении корзины (добавление, удаление, изменение количества).</summary>
     public static event Action? CartChanged;
 
+    /// <summary>Вызвать событие изменения корзины (для использования вне класса).</summary>
+    public static void RaiseCartChanged() => CartChanged?.Invoke();
+
     /// <summary>Установить текущего пользователя (вход).</summary>
     public static void Login(User user)
     {

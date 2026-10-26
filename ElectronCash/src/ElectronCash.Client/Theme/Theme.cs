@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 
-namespace ElectronCash.Client.Theme;
+namespace ElectronCash.Client.Theming;
 
 /// <summary>
 /// Статический класс с общей цветовой палитрой, шрифтами и вспомогательными методами для кастомной отрисовки.

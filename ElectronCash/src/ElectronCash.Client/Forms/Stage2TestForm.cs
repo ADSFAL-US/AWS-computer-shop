@@ -1,6 +1,6 @@
 using System.Drawing;
 using ElectronCash.Client.Controls;
-using ElectronCash.Client.Theme;
+using ElectronCash.Client.Theming;
 
 namespace ElectronCash.Client.Forms;
 
