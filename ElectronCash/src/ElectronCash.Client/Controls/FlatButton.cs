@@ -36,12 +36,12 @@ public class FlatButton : Control
         Cursor = Cursors.Hand;
         Font = Theme.RegularFont;
         Height = 40;
-        MinimumSize = new Size(80, 40);
+        MinimumSize = new Size(40, 32);
         Padding = new Padding(16, 0, 16, 0);
     }
 
     /// <summary>Автоматически подстраивать размер под контент.</summary>
-    public bool AutoSize
+    public new bool AutoSize
     {
         get => _autoSize;
         set 
@@ -52,7 +52,8 @@ public class FlatButton : Control
     }
 
     /// <summary>Текст кнопки.</summary>
-    public override string? Text { get => base.Text; set { base.Text = value ?? string.Empty; if (_autoSize) UpdateSizeFromContent(); Invalidate(); } }
+    [System.Diagnostics.CodeAnalysis.AllowNull]
+    public override string Text { get => base.Text; set { base.Text = value ?? string.Empty; if (_autoSize) UpdateSizeFromContent(); Invalidate(); } }
 
     /// <summary>Иконка (Segoe MDL2 Assets Unicode).</summary>
     public string Icon
@@ -93,26 +94,23 @@ public class FlatButton : Control
 
     private readonly System.Windows.Forms.Timer _loadingTimer = new() { Interval = 16 };
 
+    private int MeasureContentWidth()
+    {
+        int iconWidth = string.IsNullOrEmpty(_icon) ? 0 : 20;
+        int gap = string.IsNullOrEmpty(_icon) || string.IsNullOrEmpty(Text) ? 0 : 8;
+        int textWidth = string.IsNullOrEmpty(Text) ? 0 : TextRenderer.MeasureText(Text, Font).Width;
+        return Math.Max(MinimumSize.Width, iconWidth + gap + textWidth + Padding.Horizontal);
+    }
+
+    /// <summary>Размер, достаточный для иконки и текста (используется AutoSize-контейнерами).</summary>
+    public override Size GetPreferredSize(Size proposedSize) =>
+        new(MeasureContentWidth(), Math.Max(MinimumSize.Height, 40));
+
     private void UpdateSizeFromContent()
     {
-        using (var g = CreateGraphics())
-        {
-            if (g == null) return;
-                
-            int iconWidth = string.IsNullOrEmpty(_icon) ? 0 : 20;
-            int gap = string.IsNullOrEmpty(_icon) || string.IsNullOrEmpty(Text) ? 0 : 8;
-            int textWidth = string.IsNullOrEmpty(Text) ? 0 : (int)Math.Ceiling(g.MeasureString(Text, Font).Width);
-            int totalContentWidth = iconWidth + gap + textWidth;
-            int paddingHorizontal = Padding.Horizontal;
-                
-            int newWidth = Math.Max(MinimumSize.Width, totalContentWidth + paddingHorizontal);
-            int newHeight = Math.Max(MinimumSize.Height, 40);
-                
-            if (Width != newWidth || Height != newHeight)
-            {
-                Size = new Size(newWidth, newHeight);
-            }
-        }
+        var preferred = GetPreferredSize(Size.Empty);
+        if (Width != preferred.Width || Height != preferred.Height)
+            Size = preferred;
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -184,6 +182,14 @@ public class FlatButton : Control
                 break;
         }
 
+        // Неактивная кнопка не должна выглядеть кликабельной
+        if (!Enabled)
+        {
+            bgColor = bgColor == Color.Transparent ? Color.Transparent : Theme.SurfaceElevated;
+            textColor = Theme.TextMuted;
+            borderColor = Color.Transparent;
+        }
+
         // Фон кнопки
         using (var path = Theme.RoundedRect(rect, radius))
         {
@@ -208,7 +214,7 @@ public class FlatButton : Control
         // Контент
         if (_loading)
         {
-            DrawSpinner(g, rect);
+            DrawSpinner(g, rect, textColor);
         }
         else
         {
@@ -220,13 +226,13 @@ public class FlatButton : Control
     {
         int iconWidth = string.IsNullOrEmpty(_icon) ? 0 : 20;
         int gap = string.IsNullOrEmpty(_icon) || string.IsNullOrEmpty(Text) ? 0 : 8;
-        int textWidth = string.IsNullOrEmpty(Text) ? 0 : (int)Math.Ceiling(g.MeasureString(Text, Font).Width);
+        int textWidth = string.IsNullOrEmpty(Text) ? 0 : TextRenderer.MeasureText(Text, Font).Width;
         int totalWidth = iconWidth + gap + textWidth;
 
         // If text doesn't fit and not auto-sized, truncate
         if (!_autoSize && totalWidth > rect.Width - 32)
         {
-            textWidth = rect.Width - 32 - iconWidth - gap;
+            textWidth = Math.Max(0, rect.Width - 32 - iconWidth - gap);
         }
 
         // Calculate startX based on TextAlign
@@ -299,13 +305,13 @@ public class FlatButton : Control
         };
     }
 
-    private void DrawSpinner(Graphics g, Rectangle rect)
+    private void DrawSpinner(Graphics g, Rectangle rect, Color textColor)
     {
         int size = Math.Min(rect.Width, rect.Height) - 16;
         int cx = rect.X + rect.Width / 2;
         int cy = rect.Y + rect.Height / 2;
 
-        using (var pen = new Pen(Theme.Background, 3) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+        using (var pen = new Pen(textColor, 3) { StartCap = LineCap.Round, EndCap = LineCap.Round })
         {
             var rectSpinner = new Rectangle(cx - size / 2, cy - size / 2, size, size);
             g.DrawArc(pen, rectSpinner, _loadingAngle, 270);

@@ -22,6 +22,15 @@ public class ModernForm : Form
     private bool _closeHover, _maximizeHover, _minimizeHover;
     private bool _closePressed, _maximizePressed, _minimizePressed;
 
+    /// <summary>Показывать кнопку «развернуть» (для диалогов выключается).</summary>
+    public bool ShowMaximizeButton { get; set; } = true;
+
+    /// <summary>Показывать кнопку «свернуть» (для диалогов выключается).</summary>
+    public bool ShowMinimizeButton { get; set; } = true;
+
+    /// <summary>Разрешать изменение размера перетаскиванием краёв.</summary>
+    public bool AllowResize { get; set; } = true;
+
     [DllImport("user32.dll")]
     private static extern bool ReleaseCapture();
 
@@ -30,6 +39,18 @@ public class ModernForm : Form
 
     private const int WM_NCLBUTTONDOWN = 0xA1;
     private const int HTCAPTION = 0x2;
+
+    private const int WM_NCHITTEST = 0x0084;
+    private const int HTCLIENT = 1;
+    private const int HTLEFT = 10;
+    private const int HTRIGHT = 11;
+    private const int HTTOP = 12;
+    private const int HTTOPLEFT = 13;
+    private const int HTTOPRIGHT = 14;
+    private const int HTBOTTOM = 15;
+    private const int HTBOTTOMLEFT = 16;
+    private const int HTBOTTOMRIGHT = 17;
+    private const int ResizeBorder = 6;
 
     public ModernForm()
     {
@@ -124,14 +145,28 @@ public class ModernForm : Form
         DrawWindowButton(g, _closeButtonRect, "\uE8BB", _closeHover, _closePressed, Theme.Danger);
 
         // Maximize button
-        right -= ButtonSize + 4;
-        _maximizeButtonRect = new Rectangle(right - ButtonSize, top, ButtonSize, ButtonSize);
-        DrawWindowButton(g, _maximizeButtonRect, WindowState == FormWindowState.Maximized ? "\uE923" : "\uE922", _maximizeHover, _maximizePressed);
+        if (ShowMaximizeButton)
+        {
+            right -= ButtonSize + 4;
+            _maximizeButtonRect = new Rectangle(right - ButtonSize, top, ButtonSize, ButtonSize);
+            DrawWindowButton(g, _maximizeButtonRect, WindowState == FormWindowState.Maximized ? "\uE923" : "\uE922", _maximizeHover, _maximizePressed);
+        }
+        else
+        {
+            _maximizeButtonRect = Rectangle.Empty;
+        }
 
         // Minimize button
-        right -= ButtonSize + 4;
-        _minimizeButtonRect = new Rectangle(right - ButtonSize, top, ButtonSize, ButtonSize);
-        DrawWindowButton(g, _minimizeButtonRect, "\uE921", _minimizeHover, _minimizePressed);
+        if (ShowMinimizeButton)
+        {
+            right -= ButtonSize + 4;
+            _minimizeButtonRect = new Rectangle(right - ButtonSize, top, ButtonSize, ButtonSize);
+            DrawWindowButton(g, _minimizeButtonRect, "\uE921", _minimizeHover, _minimizePressed);
+        }
+        else
+        {
+            _minimizeButtonRect = Rectangle.Empty;
+        }
     }
 
     private void DrawWindowButton(Graphics g, Rectangle rect, string icon, bool hover, bool pressed, Color? hoverColor = null)
@@ -164,6 +199,42 @@ public class ModernForm : Form
             var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             g.DrawString(icon, font, brush, rect, sf);
         }
+    }
+
+    /// <summary>
+    /// Разрешает менять размер окна перетаскиванием за края (окно без системной рамки).
+    /// </summary>
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == WM_NCHITTEST && WindowState == FormWindowState.Normal && AllowResize)
+        {
+            base.WndProc(ref m);
+
+            if ((int)m.Result == HTCLIENT)
+            {
+                long lp = m.LParam.ToInt64();
+                int screenX = unchecked((short)(lp & 0xFFFF));
+                int screenY = unchecked((short)((lp >> 16) & 0xFFFF));
+                var p = PointToClient(new Point(screenX, screenY));
+
+                bool left = p.X <= ResizeBorder;
+                bool right = p.X >= ClientSize.Width - ResizeBorder;
+                bool top = p.Y <= ResizeBorder;
+                bool bottom = p.Y >= ClientSize.Height - ResizeBorder;
+
+                if (top && left) m.Result = (IntPtr)HTTOPLEFT;
+                else if (top && right) m.Result = (IntPtr)HTTOPRIGHT;
+                else if (bottom && left) m.Result = (IntPtr)HTBOTTOMLEFT;
+                else if (bottom && right) m.Result = (IntPtr)HTBOTTOMRIGHT;
+                else if (left) m.Result = (IntPtr)HTLEFT;
+                else if (right) m.Result = (IntPtr)HTRIGHT;
+                else if (top) m.Result = (IntPtr)HTTOP;
+                else if (bottom) m.Result = (IntPtr)HTBOTTOM;
+            }
+            return;
+        }
+
+        base.WndProc(ref m);
     }
 
     protected override void OnMouseDown(MouseEventArgs e)
@@ -320,9 +391,16 @@ public class ModernForm : Form
         {
             progress.ApplyTheme();
         }
+        else if (ctrl is Label or LinkLabel or CheckBox)
+        {
+            // Шрифт у таких контролов может быть задан осознанно (иконки) — не перетираем
+            ctrl.BackColor = Color.Transparent;
+            if (ctrl.ForeColor == Color.Empty || ctrl.ForeColor == SystemColors.ControlText)
+                ctrl.ForeColor = Theme.TextPrimary;
+        }
         else
         {
-            ctrl.BackColor = Theme.Background;
+            // Фон контейнеров задаётся при их создании — здесь его перетирать нельзя
             ctrl.ForeColor = Theme.TextPrimary;
             ctrl.Font = Theme.RegularFont;
         }

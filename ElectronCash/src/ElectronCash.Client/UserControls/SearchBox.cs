@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 using ElectronCash.Client.Theming;
 
 namespace ElectronCash.Client.UserControls;
@@ -38,13 +39,34 @@ public class SearchBox : Control
         _textBox.Leave += (s, e) => { _focused = false; _textBox.BackColor = Theme.Surface; Invalidate(); };
         
         Controls.Add(_textBox);
+        _textBox.HandleCreated += (s, e) => ApplyCueBanner();
+        ApplyCueBanner();
 
         // Set size AFTER _textBox is created to avoid OnResize accessing null _textBox
         Height = 40;
         MinimumSize = new Size(200, 40);
     }
 
-    public override string? Text 
+    private const int EM_SETCUEBANNER = 0x1501;
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, string lParam);
+
+    /// <summary>Placeholder рисует сам TextBox — своя отрисовка под ним не видна.</summary>
+    private void ApplyCueBanner()
+    {
+        if (!_textBox.IsHandleCreated) return;
+        SendMessage(_textBox.Handle, EM_SETCUEBANNER, (IntPtr)1, _placeholder);
+    }
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        ApplyCueBanner();
+    }
+
+    [System.Diagnostics.CodeAnalysis.AllowNull]
+    public override string Text 
     { 
         get => _textBox.Text; 
         set => _textBox.Text = value ?? string.Empty; 
@@ -94,16 +116,7 @@ public class SearchBox : Control
             g.DrawString("\uE721", iconFont, brush, iconRect, sf); // search icon
         }
 
-        // Placeholder (рисуем если поле пустое и не в фокусе)
-        if (string.IsNullOrEmpty(_textBox.Text) && !_focused)
-        {
-            using (var brush = new SolidBrush(Theme.TextMuted))
-            {
-                var textRect = new Rectangle(40, 0, Width - 80, Height);
-                var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center };
-                g.DrawString(_placeholder, Theme.RegularFont, brush, textRect, sf);
-            }
-        }
+        // Placeholder теперь рисует сам TextBox (cue banner)
     }
 
     protected override void OnMouseClick(MouseEventArgs e)

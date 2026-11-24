@@ -6,10 +6,15 @@ using ElectronCash.Client.Theming;
 namespace ElectronCash.Client.UserControls;
 
 /// <summary>
-/// Строка товара в корзине с количеством и суммой.
+/// Строка товара в корзине. Раскладка пересчитывается от текущей ширины,
+/// поэтому строка тянется вместе с боковой панелью.
 /// </summary>
 public class CartRow : Control
 {
+    private const int ContentPadding = 16;
+    private const int ButtonSize = 36;
+    private const int ButtonGap = 4;
+
     private OrderItem? _item;
     private bool _hover;
     private bool _qtyMinusPressed;
@@ -18,11 +23,11 @@ public class CartRow : Control
 
     public CartRow()
     {
-        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | 
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                  ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         DoubleBuffered = true;
-            Height = 100;
-            MinimumSize = new Size(388, 100); // Match new cart sidebar width
+        Height = 100;
+        MinimumSize = new Size(240, 100);
         Font = Theme.RegularFont;
     }
 
@@ -33,11 +38,24 @@ public class CartRow : Control
         set { _item = value; Invalidate(); }
     }
 
+    /// <summary>Сколько единиц товара есть на складе (0 — лимит неизвестен).</summary>
+    public int MaxQuantity { get; set; }
+
     /// <summary>Событие изменения количества.</summary>
     public event EventHandler<int>? QuantityChanged;
 
     /// <summary>Событие удаления товара.</summary>
     public event EventHandler? RemoveClicked;
+
+    private int ButtonY => (Height - ButtonSize) / 2;
+
+    private Rectangle RemoveRect => new(Width - ContentPadding - ButtonSize, ButtonY, ButtonSize, ButtonSize);
+
+    private Rectangle PlusRect => new(RemoveRect.Left - ButtonGap - ButtonSize, ButtonY, ButtonSize, ButtonSize);
+
+    private Rectangle QtyRect => new(PlusRect.Left - 40, ButtonY, 40, ButtonSize);
+
+    private Rectangle MinusRect => new(QtyRect.Left - ButtonGap - ButtonSize, ButtonY, ButtonSize, ButtonSize);
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -49,17 +67,14 @@ public class CartRow : Control
         rect.Width -= 1;
         rect.Height -= 1;
 
-        // Фон строки
         Color bgColor = _hover ? Theme.SurfaceHover : Theme.Surface;
-        
+
         using (var path = Theme.RoundedRect(rect, 8))
         {
             using (var brush = new SolidBrush(bgColor))
             {
                 g.FillPath(brush, path);
             }
-
-            // Тонкая рамка
             using (var pen = new Pen(Theme.Border, 1))
             {
                 g.DrawPath(pen, path);
@@ -68,60 +83,52 @@ public class CartRow : Control
 
         if (_item == null) return;
 
-            // Название товара (верхний левый)
-        var nameRect = new Rectangle(rect.X + 16, rect.Y + 8, rect.Width - 200, 24);
+        int textWidth = Math.Max(40, MinusRect.Left - ContentPadding - 8);
+
+        var nameRect = new Rectangle(rect.X + ContentPadding, rect.Y + 10, textWidth, 24);
         using (var brush = new SolidBrush(Theme.TextPrimary))
         {
-            var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Near, Trimming = StringTrimming.EllipsisCharacter };
+            var sf = new StringFormat
+            {
+                Alignment = StringAlignment.Near,
+                LineAlignment = StringAlignment.Near,
+                Trimming = StringTrimming.EllipsisCharacter,
+                FormatFlags = StringFormatFlags.NoWrap
+            };
             g.DrawString(_item.ProductName, Theme.RegularFont, brush, nameRect, sf);
         }
 
-            // Цена за единицу (под названием)
-        var priceRect = new Rectangle(rect.X + 16, rect.Y + 36, 100, 20);
+        var priceRect = new Rectangle(rect.X + ContentPadding, rect.Y + 36, textWidth, 20);
         using (var brush = new SolidBrush(Theme.TextSecondary))
         {
             var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Near };
             g.DrawString($"{_item.UnitPrice:N0} ₽ × {_item.Quantity}", Theme.SmallFont, brush, priceRect, sf);
         }
 
-            // Кнопки количества (правый центр)
-            int buttonY = rect.Y + (rect.Height - 36) / 2; // Vertically centered
-        
-            // Кнопка уменьшения количества
-            var minusRect = new Rectangle(rect.X + rect.Width - 180, buttonY, 36, 36);
-            DrawQtyButton(g, minusRect, "\uE70D", _qtyMinusPressed, _hover); // minus
-
-            // Количество
-            var qtyRect = new Rectangle(rect.X + rect.Width - 140, buttonY, 40, 36);
-            using (var brush = new SolidBrush(Theme.TextPrimary))
-            {
-                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                g.DrawString(_item.Quantity.ToString(), Theme.SectionTitleFont, brush, qtyRect, sf);
-            }
-
-            // Кнопка увеличения количества
-            var plusRect = new Rectangle(rect.X + rect.Width - 96, buttonY, 36, 36);
-            DrawQtyButton(g, plusRect, "\uE710", _qtyPlusPressed, _hover); // plus
-
-            // Сумма (под кнопками количества)
-            var totalRect = new Rectangle(rect.X + rect.Width - 180, buttonY + 40, 160, 24);
-            using (var brush = new SolidBrush(Theme.Accent))
-            {
-                var sf = new StringFormat { Alignment = StringAlignment.Far, LineAlignment = StringAlignment.Near };
-                g.DrawString($"{_item.Total:N0} ₽", Theme.SectionTitleFont, brush, totalRect, sf);
-            }
-
-            // Кнопка удаления (справа от кнопок количества, по центру вертикально)
-            var removeRect = new Rectangle(rect.X + rect.Width - 48, buttonY, 36, 36);
-            DrawQtyButton(g, removeRect, "\uE711", _removePressed, _hover, Theme.Danger); // close
+        var totalRect = new Rectangle(rect.X + ContentPadding, rect.Y + 58, textWidth, 24);
+        using (var brush = new SolidBrush(Theme.Accent))
+        {
+            var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Near };
+            g.DrawString($"{_item.Total:N0} ₽", Theme.SectionTitleFont, brush, totalRect, sf);
         }
 
-    private void DrawQtyButton(Graphics g, Rectangle rect, string icon, bool pressed, bool hover, Color? accentColor = null)
+        DrawQtyButton(g, MinusRect, "\uE738", _qtyMinusPressed);
+        DrawQtyButton(g, PlusRect, "\uE710", _qtyPlusPressed);
+        DrawQtyButton(g, RemoveRect, "\uE711", _removePressed, Theme.Danger);
+
+        using (var brush = new SolidBrush(Theme.TextPrimary))
+        {
+            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            g.DrawString(_item.Quantity.ToString(), Theme.SectionTitleFont, brush, QtyRect, sf);
+        }
+    }
+
+    private void DrawQtyButton(Graphics g, Rectangle rect, string icon, bool pressed, Color? accentColor = null)
     {
         Color bgColor;
         if (pressed)
             bgColor = accentColor ?? Theme.AccentPressed;
-        else if (hover)
+        else if (_hover)
             bgColor = accentColor ?? Theme.SurfaceHover;
         else
             bgColor = Theme.SurfaceElevated;
@@ -138,9 +145,7 @@ public class CartRow : Control
             }
         }
 
-        Color iconColor = accentColor.HasValue && (pressed || hover) ? Color.White : Theme.TextPrimary;
-        if (accentColor.HasValue && accentColor.Value == Theme.Danger && (pressed || hover))
-            iconColor = Color.White;
+        Color iconColor = accentColor.HasValue && (pressed || _hover) ? Color.White : Theme.TextPrimary;
 
         using (var iconFont = new Font(Theme.IconFontFamily, 14))
         using (var brush = new SolidBrush(iconColor))
@@ -168,51 +173,39 @@ public class CartRow : Control
     protected override void OnMouseDown(MouseEventArgs e)
     {
         base.OnMouseDown(e);
-        if (e.Button == MouseButtons.Left)
+        if (e.Button != MouseButtons.Left) return;
+
+        if (MinusRect.Contains(e.Location))
+            _qtyMinusPressed = true;
+        else if (PlusRect.Contains(e.Location))
+            _qtyPlusPressed = true;
+        else if (RemoveRect.Contains(e.Location))
+            _removePressed = true;
+
+        Invalidate();
+    }
+
+    protected override void OnMouseUp(MouseEventArgs e)
+    {
+        base.OnMouseUp(e);
+        if (e.Button != MouseButtons.Left) return;
+
+        if (_qtyMinusPressed && MinusRect.Contains(e.Location) && _item != null)
+            QuantityChanged?.Invoke(this, Math.Max(1, _item.Quantity - 1));
+        else if (_qtyPlusPressed && PlusRect.Contains(e.Location) && _item != null)
         {
-                int buttonY = (Height - 36) / 2;
-                var minusRect = new Rectangle(Width - 180, buttonY, 36, 36);
-                var plusRect = new Rectangle(Width - 96, buttonY, 36, 36);
-                var removeRect = new Rectangle(Width - 48, buttonY, 36, 36);
-
-                if (minusRect.Contains(e.Location))
-                    _qtyMinusPressed = true;
-                else if (plusRect.Contains(e.Location))
-                    _qtyPlusPressed = true;
-                else if (removeRect.Contains(e.Location))
-                    _removePressed = true;
-
-                Invalidate();
-            }
+            int next = _item.Quantity + 1;
+            if (MaxQuantity > 0 && next > MaxQuantity)
+                QuantityChanged?.Invoke(this, _item.Quantity); // лимит склада
+            else
+                QuantityChanged?.Invoke(this, next);
         }
+        else if (_removePressed && RemoveRect.Contains(e.Location))
+            RemoveClicked?.Invoke(this, EventArgs.Empty);
 
-        protected override void OnMouseUp(MouseEventArgs e)
-        {
-            base.OnMouseUp(e);
-            if (e.Button == MouseButtons.Left)
-            {
-                int buttonY = (Height - 36) / 2;
-                var minusRect = new Rectangle(Width - 180, buttonY, 36, 36);
-                var plusRect = new Rectangle(Width - 96, buttonY, 36, 36);
-                var removeRect = new Rectangle(Width - 48, buttonY, 36, 36);
-
-                if (_qtyMinusPressed && minusRect.Contains(e.Location) && _item != null)
-                {
-                    QuantityChanged?.Invoke(this, Math.Max(1, _item.Quantity - 1));
-                }
-                else if (_qtyPlusPressed && plusRect.Contains(e.Location) && _item != null)
-                {
-                    QuantityChanged?.Invoke(this, _item.Quantity + 1);
-                }
-                else if (_removePressed && removeRect.Contains(e.Location))
-                {
-                    RemoveClicked?.Invoke(this, EventArgs.Empty);
-                }
-
-                _qtyMinusPressed = _qtyPlusPressed = _removePressed = false;
-                Invalidate();
-            }
-        }
+        _qtyMinusPressed = _qtyPlusPressed = _removePressed = false;
+        Invalidate();
+    }
 
     public void ApplyTheme()
     {

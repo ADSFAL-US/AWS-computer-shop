@@ -17,13 +17,16 @@ public enum ToastType
 
 /// <summary>
 /// Всплывающее уведомление (Toast) с анимацией fade-in/out.
+/// Несколько уведомлений показываются одновременно и складываются в стопку.
 /// </summary>
 public class Toast : Form
 {
-    private static readonly Queue<Toast> _toastQueue = new();
-    private static readonly object _queueLock = new();
+    /// <summary>Активные тосты, индекс 0 — самый нижний (новый).</summary>
+    private static readonly List<Toast> _active = new();
+    private static readonly object _sync = new();
     private const int ToastWidth = 360;
     private const int ToastHeight = 72;
+    private const int MaxVisible = 3;
     private new const int Margin = 16;
     private const int Gap = 8;
 
@@ -34,6 +37,9 @@ public class Toast : Form
     private float _opacity = 0f;
     private bool _fadingIn = true;
     private bool _fadingOut = false;
+    private Form? _screenAreaOwner;
+    private EventHandler? _ownerMovedHandler;
+    private bool _closedNotified;
 
     private Toast(ToastType type, string message)
     {
@@ -55,6 +61,23 @@ public class Toast : Form
 
         _autoCloseTimer = new System.Windows.Forms.Timer { Interval = 3000 };
         _autoCloseTimer.Tick += (s, e) => StartFadeOut();
+    }
+
+    protected override bool ShowWithoutActivation => true;
+
+    private const int WS_EX_TRANSPARENT = 0x20;
+    private const int WS_EX_NOACTIVATE = 0x08000000;
+    private const int WS_EX_TOOLWINDOW = 0x80;
+
+    /// <summary>Тост не должен забирать клики и фокус у окна под ним.</summary>
+    protected override CreateParams CreateParams
+    {
+        get
+        {
+            var cp = base.CreateParams;
+            cp.ExStyle |= WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW;
+            return cp;
+        }
     }
 
     protected override void OnLoad(EventArgs e)
@@ -159,7 +182,7 @@ public class Toast : Form
                 _fadingOut = false;
                 _fadeTimer.Stop();
                 Close();
-                ProcessQueue();
+                return;
             }
             Opacity = _opacity;
             Invalidate();
@@ -173,57 +196,108 @@ public class Toast : Form
     }
 
     /// <summary>
-    /// Показать уведомление.
+    /// Показать уведомление. Тост появляется сразу и не ждёт, пока исчезнут
+    /// предыдущие: они просто стопкой поднимаются вверх.
     /// </summary>
     public static void Show(Form owner, string message, ToastType type = ToastType.Info)
     {
-        var toast = new Toast(type, message);
-        
-        lock (_queueLock)
+        var toast = new Toast(type, message) { _screenAreaOwner = owner };
+
+        lock (_sync)
         {
-            // Позиционируем относительно владельца
-            int x = owner.Right - ToastWidth - Margin;
-            int y = owner.Top + Margin;
-            
-            // Смещаем вниз если есть другие тосты
-            foreach (var existing in _toastQueue)
+            // Новый тост встаёт в самый низ стопки, старые поднимаются выше.
+            _active.Insert(0, toast);
+
+            // Больше MaxVisible одновременно не показываем: лишние старые тосты
+            // убираем досрочно, иначе стопка уезжает за верхнюю границу экрана.
+            if (_active.Count > MaxVisible)
             {
-                y += existing.Height + Gap;
+                var overflow = _active.Skip(MaxVisible).ToList();
+                foreach (var extra in overflow)
+                {
+                    _active.Remove(extra);
+                    extra._closedNotified = true;
+                    extra.Dispose();
+                }
             }
 
-            toast.Location = new Point(x, y);
-            _toastQueue.Enqueue(toast);
-            
-            if (_toastQueue.Count == 1)
+            RepositionAll();
+        }
+
+        toast.Show(owner);
+
+        // Тост — отдельное окно: при перемещении/изменении размера окна
+        // стопку нужно пересчитать, иначе уведомления останутся «в воздухе».
+        if (toast._ownerMovedHandler == null)
+        {
+            toast._ownerMovedHandler = (s, e) =>
             {
-                toast.Show(owner);
-            }
+                lock (_sync)
+                    RepositionAll();
+            };
+            owner.LocationChanged += toast._ownerMovedHandler;
+            owner.SizeChanged += toast._ownerMovedHandler;
         }
     }
 
-    private static void ProcessQueue()
+    /// <summary>
+    /// Левый нижний угол окна: правый занят кнопкой «Оформить заказ» в корзине.
+    /// </summary>
+    private static Point GetSlotLocation(Toast toast, int indexFromBottom)
     {
-        lock (_queueLock)
+        var owner = toast._screenAreaOwner;
+        if (owner == null || owner.IsDisposed)
+            return toast.Location;
+
+        var area = Screen.FromHandle(owner.Handle).WorkingArea;
+        int baseX = owner.Left + Margin;
+        int baseY = owner.Bottom - ToastHeight - Margin;
+
+        int x = Math.Max(area.Left + Margin, Math.Min(baseX, area.Right - ToastWidth - Margin));
+        int y = baseY - indexFromBottom * (ToastHeight + Gap);
+
+        // Не даём стопке уехать за верхнюю границу экрана
+        int minY = area.Top + Margin;
+        if (y < minY) y = minY;
+
+        return new Point(x, y);
+    }
+
+    /// <summary>Раскладывает активные тосты стопкой от нижнего края окна вверх.</summary>
+    private static void RepositionAll()
+    {
+        for (int i = 0; i < _active.Count; i++)
         {
-            _toastQueue.Dequeue();
-            
-            if (_toastQueue.Count > 0)
-            {
-                var next = _toastQueue.Peek();
-                // Анимируем подъём остальных тостов
-                AnimateQueueShift(next);
-            }
+            var toast = _active[i];
+            if (toast.IsDisposed) continue;
+            toast.Location = GetSlotLocation(toast, i);
         }
     }
 
-    private static void AnimateQueueShift(Toast nextToast)
+    private static void Remove(Toast toast)
     {
-        // Просто показываем следующий
-        nextToast.Show(nextToast.Owner);
+        lock (_sync)
+        {
+            if (_active.Remove(toast))
+                RepositionAll();
+        }
     }
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
+        if (!_closedNotified)
+        {
+            _closedNotified = true;
+            Remove(this);
+        }
+
+        if (_ownerMovedHandler != null && _screenAreaOwner != null)
+        {
+            _screenAreaOwner.LocationChanged -= _ownerMovedHandler;
+            _screenAreaOwner.SizeChanged -= _ownerMovedHandler;
+            _ownerMovedHandler = null;
+        }
+
         _fadeTimer?.Dispose();
         _autoCloseTimer?.Dispose();
         base.OnFormClosed(e);

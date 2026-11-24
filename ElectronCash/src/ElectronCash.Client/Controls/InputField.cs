@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 using ElectronCash.Client.Controls;
 using ElectronCash.Client.Models;
 using ElectronCash.Client.Services;
@@ -42,8 +43,7 @@ public class InputField : Control
             Height = 24,
             UseSystemPasswordChar = isPassword,
             TabStop = true
-        };
-        // Ensure TextBox background updates with parent
+        };        // Ensure TextBox background updates with parent
         _textBox.BackColor = _hasError ? Color.FromArgb(60, 30, 30) : (_focused ? Theme.SurfaceElevated : Theme.Surface);
         _textBox.TextChanged += (s, e) => { _hasError = false; Invalidate(); };
         _textBox.Enter += (s, e) => { _focused = true; _textBox.BackColor = Theme.SurfaceElevated; Invalidate(); };
@@ -51,13 +51,37 @@ public class InputField : Control
         _textBox.KeyDown += (s, e) => OnKeyDown(e);
         
         Controls.Add(_textBox);
+        _textBox.HandleCreated += (s, e) => ApplyCueBanner();
+        ApplyCueBanner();
 
         // Set size AFTER _textBox is created to avoid OnResize accessing null _textBox
         Height = 48;
         MinimumSize = new Size(200, 48);
     }
 
-    public override string? Text 
+    private const int EM_SETCUEBANNER = 0x1501;
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, string lParam);
+
+    /// <summary>
+    /// Placeholder рисуется самим TextBox: своя отрисовка под TextBox не видна,
+    /// потому что TextBox непрозрачен и закрывает клиентскую область контрола.
+    /// </summary>
+    private void ApplyCueBanner()
+    {
+        if (!_textBox.IsHandleCreated) return;
+        SendMessage(_textBox.Handle, EM_SETCUEBANNER, (IntPtr)1, _placeholder);
+    }
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        ApplyCueBanner();
+    }
+
+    [System.Diagnostics.CodeAnalysis.AllowNull]
+    public override string Text 
     { 
         get => _textBox.Text; 
         set => _textBox.Text = value ?? string.Empty; 
@@ -125,16 +149,7 @@ public class InputField : Control
             g.DrawString(_icon, iconFont, brush, iconRect, sf);
         }
 
-        // Placeholder (рисуем если поле пустое и не в фокусе)
-        if (string.IsNullOrEmpty(_textBox.Text) && !_focused)
-        {
-            using (var brush = new SolidBrush(Theme.TextMuted))
-            {
-                var textRect = new Rectangle(48, 0, Width - 96, Height);
-                var sf = new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center };
-                g.DrawString(_placeholder, Theme.RegularFont, brush, textRect, sf);
-            }
-        }
+        // Placeholder теперь рисует сам TextBox (cue banner)
 
         // Кнопка показать/скрыть пароль (если это пароль)
         if (_textBox.UseSystemPasswordChar != _showPassword) // is password field
