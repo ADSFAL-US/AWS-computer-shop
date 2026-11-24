@@ -8,171 +8,205 @@ using ElectronCash.Client.Theming;
 namespace ElectronCash.Client.Forms;
 
 /// <summary>
-/// Форма входа в систему (480x600).
+/// Форма входа. Контент центрируется и масштабируется вместе с окном.
 /// </summary>
 public class LoginForm : ModernForm
 {
+    private const int ContentMaxWidth = 400;
+    private const int ContentMinWidth = 260;
+
     private readonly InputField _loginField;
     private readonly InputField _passwordField;
     private readonly FlatButton _loginButton;
     private readonly Label _errorLabel;
-    private readonly FlatButton _btnCashier;
-    private readonly FlatButton _btnManager;
     private readonly FlatButton _btnAdmin;
-    private readonly LinkLabel _registerLink;
+    private readonly Label _registerLink;
+    private readonly TableLayoutPanel _content;
     private bool _isLoggingIn;
 
     public LoginForm()
     {
         Text = "Электронная касса";
-            Size = new Size(480, 720);
-            MinimumSize = new Size(480, 720);
-            MaximumSize = new Size(480, 720);
-            StartPosition = FormStartPosition.CenterScreen;
-            Padding = new Padding(0, 40, 0, 0);
+        Size = new Size(480, 720);
+        MinimumSize = new Size(420, 640);
+        StartPosition = FormStartPosition.CenterScreen;
+        Padding = new Padding(0, 40, 0, 0);
 
-            // Поле логина
-            _loginField = new InputField("Логин", "\uE716") // person
-            {
-                Location = new Point(40, 220),
-                Size = new Size(400, 48),
-                TabIndex = 0
-            };
-
-            // Поле пароля
-            _passwordField = new InputField("Пароль", "\uE72E", true) // lock
-            {
-                Location = new Point(40, 288),
-                Size = new Size(400, 48),
-                TabIndex = 1
-            };
-
-            // Кнопка входа - full width, centered
-            _loginButton = new FlatButton
-            {
-                Text = "Войти",
-                Variant = ButtonVariant.Primary,
-                Location = new Point(40, 356),
-                Size = new Size(400, 48),
-                Font = Theme.SectionTitleFont,
-                TabIndex = 2,
-                            AutoSize = false,
-                            TextAlign = ContentAlignment.MiddleCenter
-            };
-            _loginButton.Click += LoginButton_Click;
-
-            // Метка ошибки
-            _errorLabel = new Label
-            {
-                Text = string.Empty,
-                ForeColor = Theme.Danger,
-                Font = Theme.SmallFont,
-                AutoSize = false,
-                Location = new Point(40, 412),
-                Size = new Size(400, 24),
-                TextAlign = ContentAlignment.MiddleCenter,
-                Visible = false
-            };
-
-            // Разделитель
-            var separatorPanel = new Panel
-            {
-                Location = new Point(40, 452),
-                Size = new Size(400, 1),
-                BackColor = Theme.Border
-            };
-
-            var separatorLabel = new Label
-            {
-                Text = "или",
-                Font = Theme.SmallFont,
-                ForeColor = Theme.TextMuted,
-                AutoSize = true,
-                BackColor = Theme.Background,
-                Location = new Point(220, 444)
-            };
-
-            // Кнопки быстрого входа - full width, centered
-            _btnCashier = CreateQuickLoginButton("Войти как кассир", "\uE716", 0);
-            _btnManager = CreateQuickLoginButton("Войти как менеджер", "\uE710", 56);
-            _btnAdmin = CreateQuickLoginButton("Войти как админ", "\uE72C", 112);
-
-            _registerLink = new LinkLabel
-            {
-                Text = "Зарегистрироваться",
-                Font = Theme.RegularFont,
-                LinkColor = Theme.Accent,
-                ActiveLinkColor = Theme.AccentHover,
-                VisitedLinkColor = Theme.Accent,
-                AutoSize = true,
-                Location = new Point(180, 620),
-                TabIndex = 6
-            };
-            _registerLink.LinkClicked += (s, e) => 
-            {
-                Toast.Show(this, "Регистрация недоступна в демо-версии", ToastType.Info);
-            };
-
-            Controls.AddRange(new Control[]
-            {
-                _loginField, _passwordField, _loginButton, _errorLabel,
-                separatorPanel, separatorLabel,
-                _btnCashier, _btnManager, _btnAdmin,
-                _registerLink
-            });
-
-            // Enter в полях = вход
-            _loginField.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) _passwordField.Focus(); };
-            _passwordField.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) LoginButton_Click(s, e); };
-        }
-
-        private FlatButton CreateQuickLoginButton(string text, string icon, int yOffset)
+        // Внешняя сетка: шапка с логотипом, контент, ссылка снизу
+        var root = new TableLayoutPanel
         {
-            var btn = new FlatButton
-            {
-                Text = text,
-                Icon = icon,
-                Variant = ButtonVariant.Ghost,
-                Location = new Point(40, 456 + yOffset),
-                Size = new Size(400, 44),
-                Font = Theme.RegularFont,
-                AutoSize = false,
-                TextAlign = ContentAlignment.MiddleCenter
-            };
-            btn.Click += QuickLogin_Click;
-            return btn;
-        }
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            BackColor = Theme.Background,
+            Padding = new Padding(24, 0, 24, 24)
+        };
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 236f));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 56f));
 
-    protected override void OnPaint(PaintEventArgs e)
+        var header = new LoginHeaderPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Theme.Background,
+            Margin = Padding.Empty
+        };
+
+        _content = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 6,
+            BackColor = Theme.Background,
+            Margin = Padding.Empty
+        };
+        _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 56f));   // логин
+        _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 56f));   // пароль
+        _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 60f));   // кнопка входа
+        _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 32f));   // ошибка
+        _content.RowStyles.Add(new RowStyle(SizeType.Absolute, 56f));   // разделитель
+        _content.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));   // быстрый вход
+
+        _loginField = new InputField("Логин", "\uE716")
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 4, 0, 4),
+            TabIndex = 0
+        };
+
+        _passwordField = new InputField("Пароль", "\uE72E", true)
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 4, 0, 4),
+            TabIndex = 1
+        };
+
+        _loginButton = new FlatButton
+        {
+            Text = "Войти",
+            Variant = ButtonVariant.Primary,
+            Dock = DockStyle.Fill,
+            Font = Theme.SectionTitleFont,
+            TabIndex = 2,
+            AutoSize = false,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Margin = new Padding(0, 8, 0, 8)
+        };
+        _loginButton.Click += LoginButton_Click;
+
+        _errorLabel = new Label
+        {
+            Text = string.Empty,
+            ForeColor = Theme.Danger,
+            Font = Theme.SmallFont,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Visible = false,
+            Margin = Padding.Empty
+        };
+
+        var separatorPanel = new Panel
+        {
+            Dock = DockStyle.Top,
+            Height = 1,
+            BackColor = Theme.Border,
+            Margin = new Padding(0, 20, 0, 0)
+        };
+
+        var separatorLabel = new Label
+        {
+            Text = "или",
+            Font = Theme.SmallFont,
+            ForeColor = Theme.TextMuted,
+            AutoSize = true,
+            BackColor = Theme.Background,
+            Anchor = AnchorStyles.None,
+            Margin = Padding.Empty
+        };
+
+        var separatorHost = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Theme.Background,
+            Margin = Padding.Empty
+        };
+        separatorHost.Controls.Add(separatorPanel);
+        separatorHost.Controls.Add(separatorLabel);
+        separatorHost.Resize += (s, e) =>
+        {
+            separatorPanel.Location = new Point(0, separatorHost.Height / 2);
+            separatorPanel.Width = separatorHost.Width;
+            separatorLabel.Location = new Point(
+                (separatorHost.Width - separatorLabel.Width) / 2,
+                (separatorHost.Height - separatorLabel.Height) / 2);
+        };
+
+        _btnAdmin = new FlatButton
+        {
+            Text = "Войти как админ",
+            Icon = "\uE72C",
+            Variant = ButtonVariant.Ghost,
+            Dock = DockStyle.Top,
+            Height = 44,
+            Font = Theme.RegularFont,
+            AutoSize = false,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Margin = new Padding(0, 8, 0, 0)
+        };
+        _btnAdmin.Click += QuickLogin_Click;
+
+        _content.Controls.Add(_loginField, 0, 0);
+        _content.Controls.Add(_passwordField, 0, 1);
+        _content.Controls.Add(_loginButton, 0, 2);
+        _content.Controls.Add(_errorLabel, 0, 3);
+        _content.Controls.Add(separatorHost, 0, 4);
+        _content.Controls.Add(_btnAdmin, 0, 5);
+
+        _registerLink = new Label
+        {
+            Text = "Нет аккаунта? Обратитесь к администратору",
+            Font = Theme.SmallFont,
+            ForeColor = Theme.TextMuted,
+            AutoSize = true,
+            Anchor = AnchorStyles.None,
+            Margin = Padding.Empty
+        };
+
+        var linkHost = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Theme.Background,
+            Margin = Padding.Empty
+        };
+        linkHost.Controls.Add(_registerLink);
+        linkHost.Resize += (s, e) => _registerLink.Location = new Point(
+            (linkHost.Width - _registerLink.Width) / 2,
+            (linkHost.Height - _registerLink.Height) / 2);
+
+        root.Controls.Add(header, 0, 0);
+        root.Controls.Add(_content, 0, 1);
+        root.Controls.Add(linkHost, 0, 2);
+        Controls.Add(root);
+
+        _loginField.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) _passwordField.Focus(); };
+        _passwordField.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) LoginButton_Click(s, e); };
+    }
+
+    /// <summary>Ограничивает ширину контента, чтобы на широком окне поля не растягивались.</summary>
+    protected override void OnLayout(LayoutEventArgs levent)
     {
-        base.OnPaint(e);
-        var g = e.Graphics;
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+        base.OnLayout(levent);
 
-        // Логотип: круг 80x80 с градиентом Accent→Info
-        var logoRect = new Rectangle(Width / 2 - 40, 60, 80, 80);
-        using (var path = Theme.RoundedRect(logoRect, 40))
-        using (var brush = Theme.CreateVerticalGradient(logoRect, Theme.Accent, Theme.Info))
-        {
-            g.FillPath(brush, path);
-        }
+        // OnLayout вызывается и из конструктора базовой формы, когда поля ещё не созданы
+        if (_content is null) return;
 
-        // Текст "ЭК" в логотипе
-        using (var font = new Font(Theme.FontFamily, 28, FontStyle.Bold))
-        using (var brush = new SolidBrush(Theme.Background))
-        {
-            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString("ЭК", font, brush, logoRect, sf);
-        }
+        int available = ClientSize.Width - 48;
+        int width = Math.Clamp(available, ContentMinWidth, ContentMaxWidth);
+        int left = (ClientSize.Width - width) / 2;
 
-        // Заголовок
-        var titleRect = new Rectangle(40, 156, Width - 80, 32);
-        Theme.DrawText(g, "Электронная касса", Theme.FormTitleFont, Theme.TextPrimary, titleRect, StringAlignment.Center);
-
-        // Подзаголовок - moved lower to avoid overlap with title
-                var subtitleRect = new Rectangle(40, 200, Width - 80, 24);
-        Theme.DrawText(g, "Автоматизированное рабочее место кассира", Theme.SmallFont, Theme.TextSecondary, subtitleRect, StringAlignment.Center);
+        _content.Padding = new Padding(Math.Max(0, left - 24), 0, Math.Max(0, left - 24), 0);
     }
 
     private async void LoginButton_Click(object? sender, EventArgs e)
@@ -194,26 +228,19 @@ public class LoginForm : ModernForm
 
         try
         {
-            // Имитация задержки сети
-            await Task.Delay(1000);
+            var user = await ApiClient.Instance.LoginAsync(login, password);
+            Session.Login(user);
+            Toast.Show(this, $"Добро пожаловать, {user.FullName}!", ToastType.Success);
 
-            var user = MockDataService.Instance.GetUserByCredentials(login, password);
-            if (user != null)
-            {
-                Session.Login(user);
-                Toast.Show(this, $"Добро пожаловать, {user.FullName}!", ToastType.Success);
-                
-                await Task.Delay(500);
-                
-                // Открываем главную форму
-                var mainForm = new MainForm();
-                mainForm.Show();
-                Hide();
-            }
-            else
-            {
-                ShowError("Неверный логин или пароль");
-            }
+            await Task.Delay(500);
+
+            var mainForm = new MainForm();
+            mainForm.Show();
+            Hide();
+        }
+        catch (ApiException ex)
+        {
+            ShowError(ex.Message);
         }
         catch (Exception ex)
         {
@@ -228,22 +255,9 @@ public class LoginForm : ModernForm
 
     private void QuickLogin_Click(object? sender, EventArgs e)
     {
-        if (sender == _btnCashier)
-        {
-            _loginField.Text = "cashier";
-            _passwordField.Text = "cashier";
-        }
-        else if (sender == _btnManager)
-        {
-            _loginField.Text = "manager";
-            _passwordField.Text = "manager";
-        }
-        else if (sender == _btnAdmin)
-        {
-            _loginField.Text = "admin";
-            _passwordField.Text = "admin";
-        }
-        
+        _loginField.Text = "admin";
+        _passwordField.Text = "admin";
+
         LoginButton_Click(sender, e);
     }
 
@@ -253,5 +267,47 @@ public class LoginForm : ModernForm
         _errorLabel.Visible = true;
         _loginField.HasError = true;
         _passwordField.HasError = true;
+    }
+}
+
+/// <summary>
+/// Шапка формы входа: логотип, заголовок и подзаголовок, отрисованные по центру.
+/// </summary>
+internal sealed class LoginHeaderPanel : Panel
+{
+    public LoginHeaderPanel()
+    {
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
+                 ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+        DoubleBuffered = true;
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+        int centerX = Width / 2;
+
+        var logoRect = new Rectangle(centerX - 40, 24, 80, 80);
+        using (var path = Theme.RoundedRect(logoRect, 40))
+        using (var brush = Theme.CreateVerticalGradient(logoRect, Theme.Accent, Theme.Info))
+        {
+            g.FillPath(brush, path);
+        }
+
+        using (var font = new Font(Theme.FontFamily, 28, FontStyle.Bold))
+        using (var brush = new SolidBrush(Theme.Background))
+        {
+            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            g.DrawString("ЭК", font, brush, logoRect, sf);
+        }
+
+        var titleRect = new Rectangle(0, 120, Width, 32);
+        Theme.DrawText(g, "Электронная касса", Theme.FormTitleFont, Theme.TextPrimary, titleRect, StringAlignment.Center);
+
+        var subtitleRect = new Rectangle(0, 160, Width, 24);
+        Theme.DrawText(g, "Автоматизированное рабочее место кассира", Theme.SmallFont, Theme.TextSecondary, subtitleRect, StringAlignment.Center);
     }
 }

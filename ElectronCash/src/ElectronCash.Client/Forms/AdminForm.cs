@@ -1,5 +1,4 @@
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using ElectronCash.Client.Controls;
 using ElectronCash.Client.Models;
 using ElectronCash.Client.Services;
@@ -9,366 +8,387 @@ namespace ElectronCash.Client.Forms;
 
 /// <summary>
 /// Административная панель (доступна только для Admin).
+/// Вкладки — собственный сегментированный переключатель, чтобы не зависеть
+/// от системной отрисовки TabControl (она давала белые полосы).
 /// </summary>
 public class AdminForm : ModernForm
 {
-    private TabControl _tabControl;
-        private DataGridView _usersGrid;
-        private DataGridView _auditGrid;
-        private DataGridView _ipGrid;
-        private FlatButton _btnAddUser;
-        private FlatButton _btnEditUser;
-        private FlatButton _btnDeleteUser;
-        private FlatButton _btnAddIp;
-        private FlatButton _btnRemoveIp;
-        private FlatButton _btnClose;
+    private readonly DataGridView _usersGrid;
+    private readonly DataGridView _auditGrid;
+    private readonly DataGridView _ipGrid;
+    private readonly DataGridView _productsGrid;
+    private readonly Panel _contentHost;
+    private readonly Panel _usersPage;
+    private readonly Panel _auditPage;
+    private readonly Panel _ipPage;
+    private readonly Panel _productsPage;
+    private readonly List<(FlatButton Button, Panel Page)> _tabs = new();
+
+    private List<Category> _categories = new();
+    private string? _loadError;
 
     public AdminForm()
     {
         Text = "Административная панель";
         Size = new Size(1000, 700);
-        MinimumSize = new Size(900, 600);
+        MinimumSize = new Size(760, 520);
         StartPosition = FormStartPosition.CenterParent;
         Padding = new Padding(0, 40, 0, 0);
 
-        _tabControl = new TabControl
+        var root = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Font = Theme.RegularFont,
-            ItemSize = new Size(120, 36),
-            SizeMode = TabSizeMode.Fixed
+            ColumnCount = 1,
+            RowCount = 3,
+            BackColor = Theme.Background,
+            Padding = new Padding(16, 12, 16, 12)
         };
-        _tabControl.DrawMode = TabDrawMode.OwnerDrawFixed;
-        _tabControl.DrawItem += TabControl_DrawItem;
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 52f));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 60f));
 
-        // Tab: Users
-        var tabUsers = new TabPage("Пользователи") { BackColor = Theme.Background };
-        SetupUsersTab(tabUsers);
-        _tabControl.TabPages.Add(tabUsers);
-
-        // Tab: Audit Log
-        var tabAudit = new TabPage("Журнал аудита") { BackColor = Theme.Background };
-        SetupAuditTab(tabAudit);
-        _tabControl.TabPages.Add(tabAudit);
-
-        // Tab: IP Whitelist
-        var tabIp = new TabPage("IP Whitelist") { BackColor = Theme.Background };
-        SetupIpTab(tabIp);
-        _tabControl.TabPages.Add(tabIp);
-
-        // Close button
-        _btnClose = new FlatButton
-        {
-            Text = "Закрыть",
-            Variant = ButtonVariant.Secondary,
-            Size = new Size(120, 40),
-            Font = Theme.RegularFont,
-            Anchor = AnchorStyles.Bottom | AnchorStyles.Right
-        };
-        _btnClose.Click += (s, e) => Close();
-
-        var bottomPanel = new Panel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 60,
-            BackColor = Theme.Surface,
-            Padding = new Padding(16)
-        };
-        bottomPanel.Controls.Add(_btnClose);
-        bottomPanel.Paint += (s, e) =>
-        {
-            using (var pen = new Pen(Theme.Border))
-            {
-                e.Graphics.DrawLine(pen, 0, 0, bottomPanel.Width, 0);
-            }
-        };
-
-        Controls.Add(_tabControl);
-        Controls.Add(bottomPanel);
-
-        LoadData();
-    }
-
-    private void TabControl_DrawItem(object? sender, DrawItemEventArgs e)
-    {
-        var tabControl = (TabControl)sender!;
-        var tabPage = tabControl.TabPages[e.Index];
-        var rect = e.Bounds;
-        rect.Inflate(-2, -2);
-
-        bool selected = (e.State & DrawItemState.Selected) == DrawItemState.Selected;
-        Color bgColor = selected ? Theme.Accent : Theme.Surface;
-        Color textColor = selected ? Theme.Background : Theme.TextPrimary;
-
-        using (var path = Theme.RoundedRect(rect, 6))
-        using (var brush = new SolidBrush(bgColor))
-        {
-            e.Graphics.FillPath(brush, path);
-        }
-
-        var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-        using (var brush = new SolidBrush(textColor))
-        {
-            e.Graphics.DrawString(tabPage.Text, Theme.RegularFont, brush, rect, sf);
-        }
-    }
-
-    private void SetupUsersTab(TabPage tab)
-    {
-        var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16) };
-        
-        _usersGrid = new DataGridView
+        // ---------- сегментированные вкладки ----------
+        var tabStrip = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
-            BackgroundColor = Theme.Surface,
-            BorderStyle = BorderStyle.None,
-            GridColor = Theme.Border,
-            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = false,
-            ReadOnly = true,
-            AllowUserToAddRows = false,
-            AllowUserToDeleteRows = false,
-            RowHeadersVisible = false,
-            Font = Theme.RegularFont,
-            ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
-            {
-                BackColor = Theme.SurfaceElevated,
-                ForeColor = Theme.TextPrimary,
-                Font = Theme.SectionTitleFont,
-                SelectionBackColor = Theme.Accent,
-                SelectionForeColor = Theme.Background
-            },
-            DefaultCellStyle = new DataGridViewCellStyle
-            {
-                BackColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary,
-                Font = Theme.RegularFont,
-                SelectionBackColor = Theme.Accent,
-                SelectionForeColor = Theme.Background,
-                Padding = new Padding(8)
-            },
-            RowTemplate = { Height = 40 }
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            BackColor = Theme.Background,
+            Margin = Padding.Empty,
+            Padding = Padding.Empty
         };
+
+        _contentHost = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Theme.Background,
+            Margin = Padding.Empty
+        };
+
+        _usersPage = CreatePage();
+        _auditPage = CreatePage();
+        _ipPage = CreatePage();
+        _productsPage = CreatePage();
+
+        _usersGrid = CreateGrid();
         _usersGrid.Columns.AddRange(
             new DataGridViewTextBoxColumn { Name = "Id", HeaderText = "ID", DataPropertyName = "Id", FillWeight = 10 },
             new DataGridViewTextBoxColumn { Name = "Login", HeaderText = "Логин", DataPropertyName = "Login", FillWeight = 30 },
-            new DataGridViewTextBoxColumn { Name = "FullName", HeaderText = "ФИО", DataPropertyName = "FullName", FillWeight = 30 },
-            new DataGridViewTextBoxColumn { Name = "Role", HeaderText = "Роль", DataPropertyName = "Role", FillWeight = 30 }
+            new DataGridViewTextBoxColumn { Name = "FullName", HeaderText = "ФИО", DataPropertyName = "FullName", FillWeight = 35 },
+            new DataGridViewTextBoxColumn { Name = "Role", HeaderText = "Роль", DataPropertyName = "Role", FillWeight = 25 }
         );
 
-        var btnPanel = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 50,
-            FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(0, 8, 0, 0)
-        };
-
-        _btnDeleteUser = new FlatButton
-        {
-            Text = "Удалить",
-            Variant = ButtonVariant.Danger,
-            Size = new Size(100, 40),
-            Font = Theme.RegularFont
-        };
-        _btnDeleteUser.Click += BtnDeleteUser_Click;
-
-        _btnEditUser = new FlatButton
-        {
-            Text = "Изменить",
-            Variant = ButtonVariant.Secondary,
-            Size = new Size(100, 40),
-            Font = Theme.RegularFont
-        };
-        _btnEditUser.Click += BtnEditUser_Click;
-
-        _btnAddUser = new FlatButton
-        {
-            Text = "Добавить",
-            Variant = ButtonVariant.Primary,
-            Size = new Size(100, 40),
-            Font = Theme.RegularFont
-        };
-        _btnAddUser.Click += BtnAddUser_Click;
-
-        btnPanel.Controls.AddRange(new Control[] { _btnAddUser, _btnEditUser, _btnDeleteUser });
-        panel.Controls.Add(_usersGrid);
-        panel.Controls.Add(btnPanel);
-        tab.Controls.Add(panel);
-    }
-
-    private void SetupAuditTab(TabPage tab)
-    {
-        var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16) };
-        
-        _auditGrid = new DataGridView
-        {
-            Dock = DockStyle.Fill,
-            BackgroundColor = Theme.Surface,
-            BorderStyle = BorderStyle.None,
-            GridColor = Theme.Border,
-            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = false,
-            ReadOnly = true,
-            AllowUserToAddRows = false,
-            AllowUserToDeleteRows = false,
-            RowHeadersVisible = false,
-            Font = Theme.RegularFont,
-            ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
-            {
-                BackColor = Theme.SurfaceElevated,
-                ForeColor = Theme.TextPrimary,
-                Font = Theme.SectionTitleFont,
-                SelectionBackColor = Theme.Accent,
-                SelectionForeColor = Theme.Background
-            },
-            DefaultCellStyle = new DataGridViewCellStyle
-            {
-                BackColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary,
-                Font = Theme.RegularFont,
-                SelectionBackColor = Theme.Accent,
-                SelectionForeColor = Theme.Background,
-                Padding = new Padding(8)
-            },
-            RowTemplate = { Height = 40 }
-        };
+        _auditGrid = CreateGrid();
         _auditGrid.Columns.AddRange(
-            new DataGridViewTextBoxColumn { Name = "Id", HeaderText = "ID", DataPropertyName = "Id", FillWeight = 10 },
-            new DataGridViewTextBoxColumn { Name = "Timestamp", HeaderText = "Время", DataPropertyName = "Timestamp", FillWeight = 25 },
-            new DataGridViewTextBoxColumn { Name = "UserName", HeaderText = "Пользователь", DataPropertyName = "UserName", FillWeight = 25 },
+            new DataGridViewTextBoxColumn { Name = "Id", HeaderText = "ID", DataPropertyName = "Id", FillWeight = 8 },
+            new DataGridViewTextBoxColumn { Name = "Timestamp", HeaderText = "Время", DataPropertyName = "Timestamp", FillWeight = 22 },
+            new DataGridViewTextBoxColumn { Name = "UserName", HeaderText = "Пользователь", DataPropertyName = "UserName", FillWeight = 22 },
             new DataGridViewTextBoxColumn { Name = "Action", HeaderText = "Действие", DataPropertyName = "Action", FillWeight = 20 },
-            new DataGridViewTextBoxColumn { Name = "Details", HeaderText = "Детали", DataPropertyName = "Details", FillWeight = 30 }
+            new DataGridViewTextBoxColumn { Name = "Details", HeaderText = "Детали", DataPropertyName = "Details", FillWeight = 28 }
         );
 
-        panel.Controls.Add(_auditGrid);
-        tab.Controls.Add(panel);
-    }
-
-    private void SetupIpTab(TabPage tab)
-    {
-        var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16) };
-        
-        _ipGrid = new DataGridView
-        {
-            Dock = DockStyle.Fill,
-            BackgroundColor = Theme.Surface,
-            BorderStyle = BorderStyle.None,
-            GridColor = Theme.Border,
-            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-            MultiSelect = false,
-            ReadOnly = true,
-            AllowUserToAddRows = false,
-            AllowUserToDeleteRows = false,
-            RowHeadersVisible = false,
-            Font = Theme.RegularFont,
-            ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
-            {
-                BackColor = Theme.SurfaceElevated,
-                ForeColor = Theme.TextPrimary,
-                Font = Theme.SectionTitleFont,
-                SelectionBackColor = Theme.Accent,
-                SelectionForeColor = Theme.Background
-            },
-            DefaultCellStyle = new DataGridViewCellStyle
-            {
-                BackColor = Theme.Surface,
-                ForeColor = Theme.TextPrimary,
-                Font = Theme.RegularFont,
-                SelectionBackColor = Theme.Accent,
-                SelectionForeColor = Theme.Background,
-                Padding = new Padding(8)
-            },
-            RowTemplate = { Height = 40 }
-        };
+        _ipGrid = CreateGrid();
         _ipGrid.Columns.AddRange(
             new DataGridViewTextBoxColumn { Name = "Id", HeaderText = "ID", DataPropertyName = "Id", FillWeight = 10 },
-            new DataGridViewTextBoxColumn { Name = "IpAddress", HeaderText = "IP-адрес", DataPropertyName = "IpAddress", FillWeight = 40 },
-            new DataGridViewTextBoxColumn { Name = "Comment", HeaderText = "Комментарий", DataPropertyName = "Comment", FillWeight = 40 },
+            new DataGridViewTextBoxColumn { Name = "IpAddress", HeaderText = "IP-адрес", DataPropertyName = "IpAddress", FillWeight = 35 },
+            new DataGridViewTextBoxColumn { Name = "Comment", HeaderText = "Комментарий", DataPropertyName = "Comment", FillWeight = 35 },
             new DataGridViewTextBoxColumn { Name = "AddedAt", HeaderText = "Добавлен", DataPropertyName = "AddedAt", FillWeight = 20 }
         );
 
-        var btnPanel = new FlowLayoutPanel
+        // ---------- страница «Пользователи» ----------
+        var usersButtons = CreateButtonRow();
+        var btnAddUser = CreateButton("Добавить", ButtonVariant.Primary);
+        btnAddUser.Click += BtnAddUser_Click;
+        var btnEditUser = CreateButton("Изменить", ButtonVariant.Secondary);
+        btnEditUser.Click += BtnEditUser_Click;
+        var btnDeleteUser = CreateButton("Удалить", ButtonVariant.Danger);
+        btnDeleteUser.Click += BtnDeleteUser_Click;
+        usersButtons.Controls.AddRange(new Control[] { btnAddUser, btnEditUser, btnDeleteUser });
+
+        _usersPage.Controls.Add(_usersGrid);
+        _usersPage.Controls.Add(usersButtons);
+
+        // ---------- страница «Журнал аудита» ----------
+        _auditPage.Controls.Add(_auditGrid);
+
+        // ---------- страница «IP Whitelist» ----------
+        var ipButtons = CreateButtonRow();
+        var btnAddIp = CreateButton("Добавить IP", ButtonVariant.Primary);
+        btnAddIp.Click += BtnAddIp_Click;
+        var btnRemoveIp = CreateButton("Удалить", ButtonVariant.Danger);
+        btnRemoveIp.Click += BtnRemoveIp_Click;
+        ipButtons.Controls.AddRange(new Control[] { btnAddIp, btnRemoveIp });
+
+        _ipPage.Controls.Add(_ipGrid);
+        _ipPage.Controls.Add(ipButtons);
+
+        // ---------- страница «Товары» ----------
+        _productsGrid = CreateGrid();
+        _productsGrid.Columns.AddRange(
+            new DataGridViewTextBoxColumn { Name = "Id", HeaderText = "ID", DataPropertyName = "Id", FillWeight = 5 },
+            new DataGridViewTextBoxColumn { Name = "Name", HeaderText = "Название", DataPropertyName = "Name", FillWeight = 30 },
+            new DataGridViewTextBoxColumn { Name = "Sku", HeaderText = "Артикул", DataPropertyName = "Sku", FillWeight = 13 },
+            new DataGridViewTextBoxColumn { Name = "Category", HeaderText = "Категория", DataPropertyName = "Category", FillWeight = 14 },
+            new DataGridViewTextBoxColumn { Name = "Price", HeaderText = "Цена", DataPropertyName = "Price", FillWeight = 12 },
+            new DataGridViewTextBoxColumn { Name = "Stock", HeaderText = "Склад", DataPropertyName = "Stock", FillWeight = 8 },
+            new DataGridViewTextBoxColumn { Name = "Image", HeaderText = "Фото", DataPropertyName = "Image", FillWeight = 7 },
+            new DataGridViewTextBoxColumn { Name = "CrossSell", HeaderText = "Доп.", DataPropertyName = "CrossSell", FillWeight = 7 }
+        );
+        _productsGrid.CellDoubleClick += (s, e) =>
         {
-            Dock = DockStyle.Bottom,
-            Height = 50,
-            FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(0, 8, 0, 0)
+            if (e.RowIndex >= 0) BtnEditProduct_Click(s, EventArgs.Empty);
         };
 
-        _btnRemoveIp = new FlatButton
-        {
-            Text = "Удалить",
-            Variant = ButtonVariant.Danger,
-            Size = new Size(100, 40),
-            Font = Theme.RegularFont
-        };
-        _btnRemoveIp.Click += BtnRemoveIp_Click;
+        var productButtons = CreateButtonRow();
+        var btnAddProduct = CreateButton("Добавить", ButtonVariant.Primary);
+        btnAddProduct.Click += BtnAddProduct_Click;
+        var btnEditProduct = CreateButton("Изменить", ButtonVariant.Secondary);
+        btnEditProduct.Click += BtnEditProduct_Click;
+        var btnDeleteProduct = CreateButton("Удалить", ButtonVariant.Danger);
+        btnDeleteProduct.Click += BtnDeleteProduct_Click;
+        var btnImportProducts = CreateButton("Импорт", ButtonVariant.Secondary);
+        btnImportProducts.Click += BtnImportProducts_Click;
+        var btnAddCategory = CreateButton("Категория", ButtonVariant.Ghost);
+        btnAddCategory.Click += BtnAddCategory_Click;
+        productButtons.Controls.AddRange(
+            new Control[] { btnAddProduct, btnEditProduct, btnDeleteProduct, btnImportProducts, btnAddCategory });
 
-        _btnAddIp = new FlatButton
-        {
-            Text = "Добавить IP",
-            Variant = ButtonVariant.Primary,
-            Size = new Size(120, 40),
-            Font = Theme.RegularFont
-        };
-        _btnAddIp.Click += BtnAddIp_Click;
+        _productsPage.Controls.Add(_productsGrid);
+        _productsPage.Controls.Add(productButtons);
 
-        btnPanel.Controls.AddRange(new Control[] { _btnAddIp, _btnRemoveIp });
-        panel.Controls.Add(_ipGrid);
-        panel.Controls.Add(btnPanel);
-        tab.Controls.Add(panel);
+        _contentHost.Controls.Add(_usersPage);
+        _contentHost.Controls.Add(_auditPage);
+        _contentHost.Controls.Add(_ipPage);
+        _contentHost.Controls.Add(_productsPage);
+
+        AddTab(tabStrip, "Товары", _productsPage);
+        AddTab(tabStrip, "Пользователи", _usersPage);
+        AddTab(tabStrip, "Журнал аудита", _auditPage);
+        AddTab(tabStrip, "IP Whitelist", _ipPage);
+
+        // ---------- нижняя панель ----------
+        var footer = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Theme.Background,
+            Margin = Padding.Empty
+        };
+        footer.Paint += (s, e) =>
+        {
+            using var pen = new Pen(Theme.Border);
+            e.Graphics.DrawLine(pen, 0, 0, footer.Width, 0);
+        };
+
+        var btnClose = new FlatButton
+        {
+            Text = "Закрыть",
+            Variant = ButtonVariant.Secondary,
+            AutoSize = true,
+            Anchor = AnchorStyles.Top | AnchorStyles.Right
+        };
+        btnClose.Click += (s, e) => Close();
+        footer.Controls.Add(btnClose);
+        footer.Resize += (s, e) => btnClose.Location = new Point(
+            footer.Width - btnClose.Width, (footer.Height - btnClose.Height) / 2);
+
+        root.Controls.Add(tabStrip, 0, 0);
+        root.Controls.Add(_contentHost, 0, 1);
+        root.Controls.Add(footer, 0, 2);
+        Controls.Add(root);
+
+        SelectTab(_tabs[0].Button);
+        LoadData();
+        DarkScrollbars.ApplyToGrids(this);
+    }
+
+    private static Panel CreatePage() => new()
+    {
+        Dock = DockStyle.Fill,
+        BackColor = Theme.Background,
+        Visible = false,
+        Margin = Padding.Empty,
+        Padding = Padding.Empty
+    };
+
+    private static DataGridView CreateGrid() => new()
+    {
+        Dock = DockStyle.Fill,
+        BackgroundColor = Theme.Surface,
+        BorderStyle = BorderStyle.None,
+        GridColor = Theme.Border,
+        CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+        ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
+        RowHeadersBorderStyle = DataGridViewHeaderBorderStyle.None,
+        AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+        SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+        MultiSelect = false,
+        ReadOnly = true,
+        AllowUserToAddRows = false,
+        AllowUserToDeleteRows = false,
+        AllowUserToResizeRows = false,
+        AllowUserToOrderColumns = false,
+        ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+        RowHeadersVisible = false,
+        EnableHeadersVisualStyles = false,
+        Font = Theme.RegularFont,
+        ColumnHeadersHeight = 40,
+        ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
+        {
+            BackColor = Theme.SurfaceElevated,
+            ForeColor = Theme.TextPrimary,
+            Font = Theme.SectionTitleFont,
+            SelectionBackColor = Theme.SurfaceElevated,
+            SelectionForeColor = Theme.TextPrimary,
+            Padding = new Padding(8, 0, 8, 0)
+        },
+        DefaultCellStyle = new DataGridViewCellStyle
+        {
+            BackColor = Theme.Surface,
+            ForeColor = Theme.TextPrimary,
+            Font = Theme.RegularFont,
+            SelectionBackColor = Theme.Accent,
+            SelectionForeColor = Theme.Background,
+            Padding = new Padding(8, 0, 8, 0)
+        },
+        RowTemplate = { Height = 40 }
+    };
+
+    private static FlowLayoutPanel CreateButtonRow() => new()
+    {
+        Dock = DockStyle.Bottom,
+        Height = 56,
+        FlowDirection = FlowDirection.RightToLeft,
+        WrapContents = false,
+        BackColor = Theme.Background,
+        Padding = new Padding(0, 12, 0, 0),
+        Margin = Padding.Empty
+    };
+
+    private static FlatButton CreateButton(string text, ButtonVariant variant) => new()
+    {
+        Text = text,
+        Variant = variant,
+        AutoSize = true,
+        Margin = new Padding(8, 0, 0, 0)
+    };
+
+    private void AddTab(FlowLayoutPanel strip, string title, Panel page)
+    {
+        var button = new FlatButton
+        {
+            Text = title,
+            Variant = ButtonVariant.Ghost,
+            AutoSize = true,
+            Margin = new Padding(0, 0, 8, 0)
+        };
+        button.Click += (s, e) => SelectTab(button);
+
+        _tabs.Add((button, page));
+        strip.Controls.Add(button);
+    }
+
+    private void SelectTab(FlatButton selected)
+    {
+        foreach (var (button, page) in _tabs)
+        {
+            bool isSelected = button == selected;
+            button.Variant = isSelected ? ButtonVariant.Primary : ButtonVariant.Ghost;
+            page.Visible = isSelected;
+        }
+
+        var current = _tabs.FirstOrDefault(t => t.Button == selected).Page;
+        if (current != null)
+            _contentHost.Controls.SetChildIndex(current, 0);
     }
 
     private void LoadData()
     {
-        // Users
-        _usersGrid.DataSource = MockDataService.Instance.GetUsers().Select(u => new
+        try
         {
-            u.Id,
-            u.Login,
-            u.FullName,
-            Role = u.Role.ToString()
+            _categories = ApiClient.Instance.GetAdminCategories();
+
+            _usersGrid.DataSource = ApiClient.Instance.GetUsers().Select(u => new
+            {
+                u.Id,
+                u.Login,
+                u.FullName,
+                Role = u.Role.ToString()
+            }).ToList();
+
+            _auditGrid.DataSource = ApiClient.Instance.GetAuditLog().Select(a => new
+            {
+                a.Id,
+                Timestamp = a.Timestamp.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
+                a.UserName,
+                a.Action,
+                a.Details
+            }).ToList();
+
+            _ipGrid.DataSource = ApiClient.Instance.GetIpWhitelist().Select(i => new
+            {
+                i.Id,
+                i.IpAddress,
+                i.Comment,
+                AddedAt = i.AddedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+            }).ToList();
+
+            LoadProducts();
+        }
+        catch (Exception ex)
+        {
+            _loadError = $"Не удалось загрузить данные: {ex.Message}";
+        }
+    }
+
+    private void LoadProducts()
+    {
+        var products = ApiClient.Instance.GetAdminProducts();
+        _productsGrid.DataSource = products.Select(p => new
+        {
+            p.Id,
+            p.Name,
+            p.Sku,
+            Category = _categories.FirstOrDefault(c => c.Id == p.CategoryId)?.Name ?? $"#{p.CategoryId}",
+            Price = $"{p.Price:N0} ₽",
+            p.Stock,
+            Image = p.HasImage ? "есть" : "—",
+            CrossSell = p.IsCrossSell ? "да" : "—"
         }).ToList();
 
-        // Audit
-        _auditGrid.DataSource = MockDataService.Instance.GetAuditLog().Select(a => new
-        {
-            a.Id,
-            Timestamp = a.Timestamp.ToString("dd.MM.yyyy HH:mm"),
-            a.UserName,
-            a.Action,
-            a.Details
-        }).ToList();
+        // Кеш картинок синхронизируем с текущим каталогом
+        ProductImageCache.Instance.Sweep(products);
+    }
 
-        // IP Whitelist
-        _ipGrid.DataSource = MockDataService.Instance.GetIpWhitelist().Select(i => new
-        {
-            i.Id,
-            i.IpAddress,
-            i.Comment,
-            AddedAt = i.AddedAt.ToString("dd.MM.yyyy HH:mm")
-        }).ToList();
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        if (_loadError != null)
+            Toast.Show(this, _loadError, ToastType.Error);
     }
 
     private void BtnAddUser_Click(object? sender, EventArgs e)
     {
-        var dialog = new UserEditDialog();
-        if (dialog.ShowDialog(this) == DialogResult.OK)
+        using var dialog = new UserEditDialog();
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        var user = new User
         {
-            var user = new User
-            {
-                Login = dialog.Login,
-                Password = dialog.Password,
-                FullName = dialog.FullName,
-                Role = dialog.Role
-            };
-            MockDataService.Instance.AddUser(user);
+            Login = dialog.Login,
+            Password = dialog.Password,
+            FullName = dialog.FullName,
+            Role = dialog.Role
+        };
+
+        try
+        {
+            ApiClient.Instance.AddUser(user);
             LoadData();
             Toast.Show(this, "Пользователь добавлен", ToastType.Success);
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(this, ex.Message, ToastType.Error);
         }
     }
 
@@ -376,19 +396,36 @@ public class AdminForm : ModernForm
     {
         if (_usersGrid.SelectedRows.Count == 0) return;
         var id = (int)_usersGrid.SelectedRows[0].Cells["Id"].Value;
-        var user = MockDataService.Instance.GetUsers().FirstOrDefault(u => u.Id == id);
+
+        User? user;
+        try
+        {
+            user = ApiClient.Instance.GetUsers().FirstOrDefault(u => u.Id == id);
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(this, ex.Message, ToastType.Error);
+            return;
+        }
         if (user == null) return;
 
-        var dialog = new UserEditDialog(user.Login, user.Password, user.FullName, user.Role);
-        if (dialog.ShowDialog(this) == DialogResult.OK)
+        using var dialog = new UserEditDialog(user.Login, user.Password, user.FullName, user.Role);
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        user.Login = dialog.Login;
+        user.Password = dialog.Password;
+        user.FullName = dialog.FullName;
+        user.Role = dialog.Role;
+
+        try
         {
-            user.Login = dialog.Login;
-            user.Password = dialog.Password;
-            user.FullName = dialog.FullName;
-            user.Role = dialog.Role;
-            MockDataService.Instance.UpdateUser(user);
+            ApiClient.Instance.UpdateUser(user);
             LoadData();
             Toast.Show(this, "Пользователь обновлен", ToastType.Success);
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(this, ex.Message, ToastType.Error);
         }
     }
 
@@ -396,28 +433,44 @@ public class AdminForm : ModernForm
     {
         if (_usersGrid.SelectedRows.Count == 0) return;
         var id = (int)_usersGrid.SelectedRows[0].Cells["Id"].Value;
+
         if (id == Session.CurrentUser?.Id)
         {
             Toast.Show(this, "Нельзя удалить самого себя", ToastType.Error);
             return;
         }
-        if (MessageBox.Show("Удалить пользователя?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+
+        if (!ConfirmDialog.Ask(this, "Подтверждение", "Удалить пользователя?"))
+            return;
+
+        try
         {
-            MockDataService.Instance.DeleteUser(id);
+            ApiClient.Instance.DeleteUser(id);
             LoadData();
             Toast.Show(this, "Пользователь удален", ToastType.Success);
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(this, ex.Message, ToastType.Error);
         }
     }
 
     private void BtnAddIp_Click(object? sender, EventArgs e)
     {
-        var dialog = new IpEditDialog();
-        if (dialog.ShowDialog(this) == DialogResult.OK)
+        using var dialog = new IpEditDialog();
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        var ip = new IpEntry { IpAddress = dialog.IpAddress, Comment = dialog.Comment };
+
+        try
         {
-            var ip = new IpEntry { IpAddress = dialog.IpAddress, Comment = dialog.Comment };
-            MockDataService.Instance.AddIpEntry(ip);
+            ApiClient.Instance.AddIpEntry(ip);
             LoadData();
             Toast.Show(this, "IP добавлен", ToastType.Success);
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(this, ex.Message, ToastType.Error);
         }
     }
 
@@ -425,11 +478,126 @@ public class AdminForm : ModernForm
     {
         if (_ipGrid.SelectedRows.Count == 0) return;
         var id = (int)_ipGrid.SelectedRows[0].Cells["Id"].Value;
-        if (MessageBox.Show("Удалить IP-адрес?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+
+        if (!ConfirmDialog.Ask(this, "Подтверждение", "Удалить IP-адрес?"))
+            return;
+
+        try
         {
-            MockDataService.Instance.DeleteIpEntry(id);
+            ApiClient.Instance.DeleteIpEntry(id);
             LoadData();
             Toast.Show(this, "IP удален", ToastType.Success);
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(this, ex.Message, ToastType.Error);
+        }
+    }
+
+    // ---------- товары ----------
+
+    private void BtnAddProduct_Click(object? sender, EventArgs e)
+    {
+        using var dialog = new ProductEditDialog(null, _categories);
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        LoadData();
+        Toast.Show(this, "Товар добавлен", ToastType.Success);
+    }
+
+    private void BtnEditProduct_Click(object? sender, EventArgs e)
+    {
+        var product = GetSelectedProduct();
+        if (product is null) return;
+
+        using var dialog = new ProductEditDialog(product, _categories);
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        LoadData();
+        Toast.Show(this, "Товар обновлён", ToastType.Success);
+    }
+
+    private Product? GetSelectedProduct()
+    {
+        if (_productsGrid.SelectedRows.Count == 0)
+        {
+            Toast.Show(this, "Выберите товар в списке", ToastType.Warning);
+            return null;
+        }
+
+        var id = (int)_productsGrid.SelectedRows[0].Cells["Id"].Value;
+        try
+        {
+            return ApiClient.Instance.GetProductById(id);
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(this, ex.Message, ToastType.Error);
+            return null;
+        }
+    }
+
+    private void BtnDeleteProduct_Click(object? sender, EventArgs e)
+    {
+        if (_productsGrid.SelectedRows.Count == 0)
+        {
+            Toast.Show(this, "Выберите товар в списке", ToastType.Warning);
+            return;
+        }
+
+        var id = (int)_productsGrid.SelectedRows[0].Cells["Id"].Value;
+        var name = _productsGrid.SelectedRows[0].Cells["Name"].Value?.ToString();
+
+        if (!ConfirmDialog.Ask(this, "Удаление товара",
+                $"Удалить товар «{name}»? Изображение тоже будет удалено."))
+            return;
+
+        try
+        {
+            ApiClient.Instance.DeleteProduct(id);
+            LoadData();
+            Toast.Show(this, "Товар удалён", ToastType.Success);
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(this, ex.Message, ToastType.Error);
+        }
+    }
+
+    private void BtnImportProducts_Click(object? sender, EventArgs e)
+    {
+        using var dialog = new ProductImportDialog();
+        dialog.ShowDialog(this);
+
+        if (dialog.Imported)
+        {
+            LoadData();
+            Toast.Show(this, "Каталог обновлён после импорта", ToastType.Success);
+        }
+    }
+
+    private void BtnAddCategory_Click(object? sender, EventArgs e)
+    {
+        using var dialog = new TextInputDialog(
+            "Новая категория", "Название категории");
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        var name = dialog.Value.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            Toast.Show(this, "Укажите название категории", ToastType.Warning);
+            return;
+        }
+
+        try
+        {
+            ApiClient.Instance.AddCategory(name);
+            LoadData();
+            Toast.Show(this, "Категория добавлена", ToastType.Success);
+        }
+        catch (Exception ex)
+        {
+            Toast.Show(this, ex.Message, ToastType.Error);
         }
     }
 }
@@ -437,99 +605,108 @@ public class AdminForm : ModernForm
 /// <summary>
 /// Диалог редактирования пользователя.
 /// </summary>
-internal class UserEditDialog : Form
+internal class UserEditDialog : ModernForm
 {
     private readonly InputField _loginField;
     private readonly InputField _passwordField;
     private readonly InputField _fullNameField;
-    private readonly ComboBox _roleCombo;
-    private readonly FlatButton _btnOk;
-    private readonly FlatButton _btnCancel;
+    private readonly DarkComboBox _roleCombo;
 
     public string Login => _loginField.Text;
     public string Password => _passwordField.Text;
     public string FullName => _fullNameField.Text;
-    public Role Role => (Role)_roleCombo.SelectedItem!;
+    public Role Role => (Role)(_roleCombo.SelectedItem ?? Role.Cashier);
 
     public UserEditDialog(string login = "", string password = "", string fullName = "", Role role = Role.Cashier)
     {
         Text = string.IsNullOrEmpty(login) ? "Новый пользователь" : "Редактировать пользователя";
-        Size = new Size(400, 400);
+        Size = new Size(420, 470);
+        MinimumSize = new Size(360, 430);
         StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        BackColor = Theme.Background;
-        Padding = new Padding(24);
+        ShowMaximizeButton = false;
+        ShowMinimizeButton = false;
+        AllowResize = false;
+        Padding = new Padding(0, 40, 0, 0);
 
-        var panel = new FlowLayoutPanel
+        var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-            AutoScroll = true,
-            Padding = new Padding(0, 0, 0, 16)
+            ColumnCount = 1,
+            RowCount = 8,
+            BackColor = Theme.Background,
+            Padding = new Padding(24, 8, 24, 0)
         };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        for (int i = 0; i < 4; i++)
+        {
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 22f));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52f));
+        }
 
-        _loginField = new InputField("Логин", "\uE716") { Width = 340 };
-        _passwordField = new InputField("Пароль", "\uE72E", true) { Width = 340 };
-        _fullNameField = new InputField("ФИО", "\uE716") { Width = 340 };
+        _loginField = new InputField("Логин", "\uE716") { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 4) };
+        _passwordField = new InputField("Пароль", "\uE72E", true) { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 4) };
+        _fullNameField = new InputField("ФИО", "\uE716") { Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 4) };
 
         _loginField.Text = login;
         _passwordField.Text = password;
         _fullNameField.Text = fullName;
 
-        _roleCombo = new ComboBox
+        _roleCombo = new DarkComboBox
         {
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            Font = Theme.RegularFont,
-            Width = 340,
-            Height = 40,
-            BackColor = Theme.Surface,
-            ForeColor = Theme.TextPrimary,
-            FlatStyle = FlatStyle.Flat,
-            DataSource = Enum.GetValues(typeof(Role))
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 4, 0, 4)
         };
+        _roleCombo.SetItems(Enum.GetValues(typeof(Role)).Cast<object>());
         _roleCombo.SelectedItem = role;
 
-        panel.Controls.Add(new Label { Text = "Логин", Font = Theme.SmallFont, ForeColor = Theme.TextSecondary, AutoSize = true, Margin = new Padding(0, 0, 0, 4) });
-        panel.Controls.Add(_loginField);
-        panel.Controls.Add(new Label { Text = "Пароль", Font = Theme.SmallFont, ForeColor = Theme.TextSecondary, AutoSize = true, Margin = new Padding(0, 12, 0, 4) });
-        panel.Controls.Add(_passwordField);
-        panel.Controls.Add(new Label { Text = "ФИО", Font = Theme.SmallFont, ForeColor = Theme.TextSecondary, AutoSize = true, Margin = new Padding(0, 12, 0, 4) });
-        panel.Controls.Add(_fullNameField);
-        panel.Controls.Add(new Label { Text = "Роль", Font = Theme.SmallFont, ForeColor = Theme.TextSecondary, AutoSize = true, Margin = new Padding(0, 12, 0, 4) });
-        panel.Controls.Add(_roleCombo);
+        layout.Controls.Add(CreateCaption("Логин"), 0, 0);
+        layout.Controls.Add(_loginField, 0, 1);
+        layout.Controls.Add(CreateCaption("Пароль"), 0, 2);
+        layout.Controls.Add(_passwordField, 0, 3);
+        layout.Controls.Add(CreateCaption("ФИО"), 0, 4);
+        layout.Controls.Add(_fullNameField, 0, 5);
+        layout.Controls.Add(CreateCaption("Роль"), 0, 6);
+        layout.Controls.Add(_roleCombo, 0, 7);
 
-        _btnOk = new FlatButton { Text = "OK", Variant = ButtonVariant.Primary, Size = new Size(100, 40), Font = Theme.RegularFont };
-        _btnOk.Click += (s, e) => { DialogResult = DialogResult.OK; Close(); };
+        var btnOk = new FlatButton { Text = "OK", Variant = ButtonVariant.Primary, AutoSize = true, Margin = Padding.Empty };
+        btnOk.Click += (s, e) => { DialogResult = DialogResult.OK; Close(); };
 
-        _btnCancel = new FlatButton { Text = "Отмена", Variant = ButtonVariant.Ghost, Size = new Size(100, 40), Font = Theme.RegularFont };
-        _btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
+        var btnCancel = new FlatButton { Text = "Отмена", Variant = ButtonVariant.Ghost, AutoSize = true, Margin = new Padding(8, 0, 0, 0) };
+        btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
         var btnPanel = new FlowLayoutPanel
         {
             Dock = DockStyle.Bottom,
-            Height = 50,
+            Height = 64,
             FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(0, 8, 0, 0)
+            WrapContents = false,
+            BackColor = Theme.Background,
+            Padding = new Padding(24, 12, 24, 12)
         };
-        btnPanel.Controls.AddRange(new Control[] { _btnOk, _btnCancel });
+        btnPanel.Controls.AddRange(new Control[] { btnOk, btnCancel });
 
-        Controls.Add(panel);
+        Controls.Add(layout);
         Controls.Add(btnPanel);
     }
+
+    private static Label CreateCaption(string text) => new()
+    {
+        Text = text,
+        Font = Theme.SmallFont,
+        ForeColor = Theme.TextSecondary,
+        AutoSize = true,
+        Anchor = AnchorStyles.Left | AnchorStyles.Bottom,
+        Margin = Padding.Empty
+    };
 }
 
 /// <summary>
-/// Диалог редактирования IP.
+/// Диалог добавления IP-адреса.
 /// </summary>
-internal class IpEditDialog : Form
+internal class IpEditDialog : ModernForm
 {
     private readonly InputField _ipField;
     private readonly InputField _commentField;
-    private readonly FlatButton _btnOk;
-    private readonly FlatButton _btnCancel;
 
     public string IpAddress => _ipField.Text;
     public string Comment => _commentField.Text;
@@ -537,47 +714,78 @@ internal class IpEditDialog : Form
     public IpEditDialog()
     {
         Text = "Добавить IP-адрес";
-        Size = new Size(400, 300);
+        Size = new Size(420, 330);
+        MinimumSize = new Size(360, 310);
         StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        MaximizeBox = false;
-        MinimizeBox = false;
-        BackColor = Theme.Background;
-        Padding = new Padding(24);
+        ShowMaximizeButton = false;
+        ShowMinimizeButton = false;
+        AllowResize = false;
+        Padding = new Padding(0, 40, 0, 0);
 
-        var panel = new FlowLayoutPanel
+        var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-            AutoScroll = true,
-            Padding = new Padding(0, 0, 0, 16)
+            ColumnCount = 1,
+            RowCount = 4,
+            BackColor = Theme.Background,
+            Padding = new Padding(24, 8, 24, 0)
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 22f));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52f));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 22f));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52f));
+
+        _ipField = new InputField("IP-адрес (например, 192.168.1.100)", "\uE765")
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 0, 0, 4)
+        };
+        _commentField = new InputField("Комментарий", "\uE70F")
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 0, 0, 4)
         };
 
-        _ipField = new InputField("IP-адрес (например, 192.168.1.100)", "\uE765") { Width = 340 };
-        _commentField = new InputField("Комментарий", "\uE70F") { Width = 340 };
+        layout.Controls.Add(new Label
+        {
+            Text = "IP-адрес",
+            Font = Theme.SmallFont,
+            ForeColor = Theme.TextSecondary,
+            AutoSize = true,
+            Anchor = AnchorStyles.Left | AnchorStyles.Bottom,
+            Margin = Padding.Empty
+        }, 0, 0);
+        layout.Controls.Add(_ipField, 0, 1);
+        layout.Controls.Add(new Label
+        {
+            Text = "Комментарий",
+            Font = Theme.SmallFont,
+            ForeColor = Theme.TextSecondary,
+            AutoSize = true,
+            Anchor = AnchorStyles.Left | AnchorStyles.Bottom,
+            Margin = Padding.Empty
+        }, 0, 2);
+        layout.Controls.Add(_commentField, 0, 3);
 
-        panel.Controls.Add(new Label { Text = "IP-адрес", Font = Theme.SmallFont, ForeColor = Theme.TextSecondary, AutoSize = true, Margin = new Padding(0, 0, 0, 4) });
-        panel.Controls.Add(_ipField);
-        panel.Controls.Add(new Label { Text = "Комментарий", Font = Theme.SmallFont, ForeColor = Theme.TextSecondary, AutoSize = true, Margin = new Padding(0, 12, 0, 4) });
-        panel.Controls.Add(_commentField);
+        var btnOk = new FlatButton { Text = "OK", Variant = ButtonVariant.Primary, AutoSize = true, Margin = Padding.Empty };
+        btnOk.Click += (s, e) => { DialogResult = DialogResult.OK; Close(); };
 
-        _btnOk = new FlatButton { Text = "OK", Variant = ButtonVariant.Primary, Size = new Size(100, 40), Font = Theme.RegularFont };
-        _btnOk.Click += (s, e) => { DialogResult = DialogResult.OK; Close(); };
-
-        _btnCancel = new FlatButton { Text = "Отмена", Variant = ButtonVariant.Ghost, Size = new Size(100, 40), Font = Theme.RegularFont };
-        _btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
+        var btnCancel = new FlatButton { Text = "Отмена", Variant = ButtonVariant.Ghost, AutoSize = true, Margin = new Padding(8, 0, 0, 0) };
+        btnCancel.Click += (s, e) => { DialogResult = DialogResult.Cancel; Close(); };
 
         var btnPanel = new FlowLayoutPanel
         {
             Dock = DockStyle.Bottom,
-            Height = 50,
+            Height = 64,
             FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(0, 8, 0, 0)
+            WrapContents = false,
+            BackColor = Theme.Background,
+            Padding = new Padding(24, 12, 24, 12)
         };
-        btnPanel.Controls.AddRange(new Control[] { _btnOk, _btnCancel });
+        btnPanel.Controls.AddRange(new Control[] { btnOk, btnCancel });
 
-        Controls.Add(panel);
+        Controls.Add(layout);
         Controls.Add(btnPanel);
     }
 }
