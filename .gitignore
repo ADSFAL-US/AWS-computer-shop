@@ -370,6 +370,7 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 **/__pycache__/
 *.pyc
+.venv/
 
 # Cake - Uncomment if you are using it
 #tools/**
@@ -445,3 +446,7 @@ FodyWeavers.xsd
 *.msm
 *.msp
 build/ElectronCash.Client.exe
+
+# Локальное хранилище изображений товаров и клиентский кеш
+api/data/
+_crop_*.png

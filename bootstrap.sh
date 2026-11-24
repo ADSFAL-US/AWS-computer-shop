@@ -49,14 +49,9 @@ echo "==> dotnet build"
 dotnet build --configuration Release --no-restore
 
 if [[ "${1:-}" == "--run" ]]; then
-  API_PROJECT=$(find . -name 'ElectronCash.Api.csproj' -print -quit)
-  if [[ -z "$API_PROJECT" ]]; then
-    echo "Не найден ElectronCash.Api.csproj" >&2
-    exit 1
-  fi
-  echo "==> Запуск API: $API_PROJECT"
-  exec dotnet run --project "$API_PROJECT" --configuration Release --no-build
+  echo "==> Запуск API (FastAPI + PostgreSQL через Docker Compose)"
+  exec docker compose up --build
 fi
 
 echo
-echo "Готово. Запустить API:   ./bootstrap.sh --run"
+echo "Готово. Запустить API:   docker compose up -d --build"
