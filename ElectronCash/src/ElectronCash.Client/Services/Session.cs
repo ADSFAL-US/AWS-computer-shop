@@ -10,7 +10,6 @@ public static class Session
 {
     private static User? _currentUser;
     private static List<OrderItem> _currentCart = new();
-    private static int _currentOrderId;
     private static decimal _discount;
 
     /// <summary>Текущий вошедший в систему пользователь.</summary>
@@ -22,18 +21,41 @@ public static class Session
     /// <summary>Текущая корзина заказа.</summary>
     public static List<OrderItem> CurrentCart => _currentCart;
 
-    /// <summary>ID текущего заказа (номер, выдаётся при открытии новой смены).</summary>
-    public static int CurrentOrderId
-    {
-        get => _currentOrderId;
-        set => _currentOrderId = value;
-    }
-
     /// <summary>Скидка на текущий заказ (в абсолютных единицах).</summary>
     public static decimal Discount
     {
         get => _discount;
         set => _discount = value;
+    }
+
+    /// <summary>
+    /// Убирает из корзины позиции, которых больше нет в каталоге, и
+    /// подрезает количество до остатка на складе.
+    /// </summary>
+    public static void PruneCart(IReadOnlyList<Product> products)
+    {
+        var byId = products.ToDictionary(p => p.Id);
+        for (int i = _currentCart.Count - 1; i >= 0; i--)
+        {
+            var item = _currentCart[i];
+            if (!byId.TryGetValue(item.ProductId, out var product))
+            {
+                _currentCart.RemoveAt(i);
+                continue;
+            }
+
+            item.UnitPrice = product.Price;
+            item.ProductName = product.Name;
+            if (product.Stock <= 0)
+            {
+                _currentCart.RemoveAt(i);
+                continue;
+            }
+            if (item.Quantity > product.Stock)
+                item.Quantity = product.Stock;
+        }
+
+        CartChanged?.Invoke();
     }
 
     /// <summary>Сумма корзины без учёта скидки и НДС.</summary>
@@ -56,7 +78,6 @@ public static class Session
     {
         _currentUser = user;
         ClearCart();
-        _currentOrderId = new Random().Next(1000, 9999);
     }
 
     /// <summary>Выход из системы.</summary>
@@ -129,23 +150,5 @@ public static class Session
     {
         _discount = Math.Max(0, amount);
         CartChanged?.Invoke();
-    }
-
-    /// <summary>Создать заказ из текущей корзины.</summary>
-    public static Order CreateOrder()
-    {
-        if (!IsLoggedIn)
-            throw new InvalidOperationException("Пользователь не вошёл в систему");
-
-        return new Order
-        {
-            Id = _currentOrderId,
-            CreatedAt = DateTime.Now,
-            CashierId = CurrentUser!.Id,
-            Items = new List<OrderItem>(_currentCart),
-            Discount = _discount,
-            Total = CartTotal,
-            Status = OrderStatus.Paid
-        };
     }
 }

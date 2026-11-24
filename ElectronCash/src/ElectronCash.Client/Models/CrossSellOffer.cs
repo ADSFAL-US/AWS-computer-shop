@@ -9,4 +9,7 @@ public class CrossSellOffer
     public decimal Price { get; set; }
     public string Icon { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty; // "accessory" или "service"
+
+    /// <summary>Товар на складе, который реально попадёт в заказ.</summary>
+    public int? ProductId { get; set; }
 }
